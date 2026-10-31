@@ -26,6 +26,7 @@ export function vaccinationPayload(rows, pending, today=limaToday()) {
     if(names.has(key))throw Error('La vacuna está repetida en esta atención.')
     names.add(key)
     if(applied&&(!row.fechaAplicacion||row.fechaAplicacion>today))throw Error('Indica una fecha efectiva de aplicación válida (Lima).')
+    if(applied&&scheduled&&row.fechaAplicacion<(scheduled.fechaProgramada||scheduled.proximaDosis))throw Error('La aplicación no puede ser anterior a la fecha programada de vacunación.')
     if(!applied&&!row.proximaDosis)throw Error('Indica la fecha de la vacuna futura.')
     if(row.proximaDosis&&(row.proximaDosis<today||(applied&&row.proximaDosis<=row.fechaAplicacion)))throw Error('La próxima dosis debe ser posterior a la aplicación y no estar vencida.')
     if((row.observaciones||'').length>500)throw Error('Las indicaciones admiten hasta 500 caracteres.')

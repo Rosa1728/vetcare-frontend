@@ -30,3 +30,15 @@ test('errores de backend se asignan al campo sin confundir conflictos clínicos'
  assert.deepEqual(vetServerErrors({response:{data:{campos:{'datosUsuario.correo':'Revisa el correo'}}}}),{correo:'Revisa el correo'})
  assert.deepEqual(vetServerErrors({response:{status:409,data:{error:'Existen registros relacionados'}}}),{})
 })
+
+test('campos obligatorios vacíos tienen errores propios sin borrar los demás valores',()=>{
+ const values={nombres:'',apellidos:' ',correo:'correo-invalido',especialidad:'General',nroColegiatura:'CMVP 12345'}
+ const snapshot={...values},errors=vetFormErrors(values)
+ assert.equal(errors.nombres,'Ingresa los nombres.');assert.equal(errors.apellidos,'Ingresa los apellidos.');assert.ok(errors.correo)
+ assert.equal(errors.especialidad,undefined);assert.deepEqual(values,snapshot)
+ assert.ok(vetFormErrors({nombres:'x'.repeat(101)}).nombres)
+})
+test('tratamiento deriva de un solo atributo y nunca duplica prefijos',()=>{
+ for(const nombres of ['Mateo','Dr. Mateo','Dra. Dr. Mateo'])assert.equal(professionalName({nombres,apellidos:'Ramírez',tratamientoProfesional:'Dra.'}),'Dra. Mateo Ramírez')
+ assert.equal(professionalName({nombres:'Mateo',apellidos:'Ramírez',tratamientoProfesional:null}),'Mateo Ramírez')
+})

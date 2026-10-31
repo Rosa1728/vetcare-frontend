@@ -1,0 +1,75 @@
+<!doctype html><html lang="es"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>QA aislada · Mis mascotas</title><style>body{background:#F8F7FC}.qa-tools{padding:12px;font-size:12px}.qa-tools button{border:1px solid #DDD0F7;border-radius:6px;margin:4px;padding:6px}.capture .qa-tools{display:none}#qa-result{display:block;overflow-wrap:anywhere}</style><div id="root"></div><script type="module">
+// Todas las operaciones de esta página son simuladas en memoria. Nunca usa una API real.
+import React from 'react'
+import {createRoot} from 'react-dom/client'
+import {AuthProvider} from '/src/contexts/AuthContext.jsx'
+import Mascotas from '/src/pages/Mascotas.jsx'
+import {api} from '/src/lib/api.js'
+import '/src/index.css'
+const h=React.createElement,q=new URLSearchParams(location.search),role=q.get('role')==='ADMIN'?'ADMIN':'PROPIETARIO'
+if(q.has('captura'))document.documentElement.classList.add('capture')
+const token=['qa',btoa(JSON.stringify({idUsuario:1,rol:role,exp:4102444800})),'qa'].join('.')
+sessionStorage.setItem('vetcare_token',token);sessionStorage.setItem('vetcare_role',role)
+const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const ctx=canvas.getContext('2d');ctx.fillStyle='#DDD0F7';ctx.fillRect(0,0,64,64);ctx.fillStyle='#3B2382';ctx.beginPath();ctx.arc(32,32,20,0,Math.PI*2);ctx.fill()
+const source=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'))
+const photos=new Map([[1,source]]),writes=[]
+let ownerReady=false
+let pets=[{idMascota:1,idPropietario:1,nombre:'Luna QA',especie:'CANINA',raza:' Cruce histórico ',sexo:'Hembra',fechaNacimiento:'2021-06-28',tieneFoto:true,nombrePropietario:'Cuenta sintética'}],nextId=2
+api.defaults.adapter=async config=>{
+ await new Promise(resolve=>setTimeout(resolve,70))
+ const url=config.url,method=config.method,payload=typeof config.data==='string'?JSON.parse(config.data):config.data
+ let data
+ if(method==='get'){
+  if(url==='/usuarios/me')data={idUsuario:1,nombres:'Cuenta',apellidos:'QA',rol:role}
+  else if(url==='/propietarios/me'){data={idPropietario:1};ownerReady=true}
+  else if(url==='/propietarios')data=[{idPropietario:1,nombres:'Cuenta',apellidos:'QA'}]
+  else if(url==='/mascotas')data=pets.map(p=>({...p,tieneFoto:photos.has(p.idMascota)}))
+  else if(/^\/mascotas\/\d+\/foto$/.test(url))data=photos.get(Number(url.split('/')[2]))
+ }else{
+  writes.push({url,method,payload})
+  if(method==='post'&&url==='/mascotas'){data={...payload,idMascota:nextId++,tieneFoto:false};pets.push(data)}
+  else if(method==='put'&&/^\/mascotas\/\d+$/.test(url)){const pet=pets.find(p=>p.idMascota===Number(url.split('/')[2]));Object.assign(pet,payload);data={...pet}}
+  else if(/^\/mascotas\/\d+\/foto$/.test(url)){const id=Number(url.split('/')[2]);if(method==='post')photos.set(id,payload.get('foto'));else if(method==='delete')photos.delete(id);data=''}
+  else if(method==='delete'&&/^\/mascotas\/\d+$/.test(url))throw {response:{status:400,data:{error:'No se puede eliminar una mascota con historia clínica registrada'}}}
+ }
+ if(data===undefined)throw {response:{status:404,data:{error:'Recurso inexistente en QA'}},config}
+ return {data,status:200,statusText:'OK',headers:{},config}
+}
+const wait=async fn=>{for(let i=0;i<250;i++){if(fn())return;await new Promise(r=>setTimeout(r,20))}throw Error('Tiempo agotado')},tick=()=>new Promise(r=>setTimeout(r,0)),btn=(text,scope=document)=>[...scope.querySelectorAll('button')].find(n=>n.textContent.trim()===text),editor=()=>document.querySelector('.mascotas-editor'),dialog=()=>document.querySelector('.mascotas-photo-dialog'),row=id=>[...document.querySelectorAll('tbody tr')].find(r=>r.textContent.includes(id))
+function fill(node,value){if(!node)throw Error('Campo no encontrado');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(node,value);node.dispatchEvent(new Event('input',{bubbles:true}))}
+function chooseFile(input){const transfer=new DataTransfer();transfer.items.add(new File([source],'mascota-qa.png',{type:'image/png'}));input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}))}
+function key(node,key,shiftKey=false){node.dispatchEvent(new KeyboardEvent('keydown',{key,shiftKey,bubbles:true}))}
+async function select(label,choice){const trigger=document.querySelector(`[aria-label="${label}"]`);trigger.scrollIntoView({block:'nearest'});trigger.click();await wait(()=>document.querySelector('[role=listbox]'));const option=[...document.querySelectorAll('[role=option]')].find(n=>n.textContent.trim()===choice);if(!option)throw Error('Opción no encontrada: '+choice);option.click();await tick()}
+async function crop(){await wait(()=>document.querySelector('[aria-labelledby="pet-crop-title"]'));await wait(()=>!btn('Usar este recorte').disabled);btn('Usar este recorte').click();await wait(()=>!document.querySelector('[aria-labelledby="pet-crop-title"]'));await tick()}
+async function openCreate(){btn('Nueva mascota').click();await wait(editor);fill(document.getElementById('pet-name'),'Paciente nuevo');await tick();if(role==='ADMIN')await select('Propietario','Cuenta QA (#1)')}
+async function run(){const passed=[],check=(ok,label)=>{if(!ok)throw Error(label);passed.push(label)}
+ try{
+ await wait(()=>row('Luna QA'));if(role==='PROPIETARIO')await wait(()=>ownerReady);check(!btn('Actualizar').disabled,'Listado cargado')
+ check(role==='ADMIN'?!!btn('Eliminar'):!btn('Eliminar'),'Eliminar solo disponible para ADMIN')
+ await openCreate();check(document.getElementById('pet-name').autocomplete==='off'&&document.getElementById('pet-name').name==='petName','Nombre de mascota sin semántica de persona')
+ check(document.querySelector('.mascotas-photo-section').textContent.includes('(opcional)'),'Fotografía opcional identificada')
+ const trigger=document.querySelector('[aria-label="Especie de la mascota"]'),box=()=>editor().getBoundingClientRect()
+ const before=box();trigger.click();await wait(()=>document.querySelector('[role=listbox]'));check(Math.abs(box().height-before.height)<1&&Math.abs(box().top-before.top)<1,'Especie flotante sin salto de modal')
+ check(!document.querySelector('fieldset').contains(document.querySelector('[role=listbox]')),'Menú fuera del contenedor con scroll')
+ key(document.activeElement,'Escape');await tick();check(!!editor()&&document.activeElement===trigger,'Escape cierra lista y devuelve foco')
+ await select('Especie de la mascota','Perro');await select('Raza de la mascota','Labrador retriever');await select('Sexo','Macho')
+ const birth=editor().querySelector('[type=date]');fill(birth,'2999-01-01');await tick();check(!birth.checkValidity(),'Nacimiento futuro bloqueado');fill(birth,'2022-02-10');await tick()
+ const save=btn('Guardar',editor());save.click();await wait(()=>!editor());await wait(()=>!btn('Actualizar').disabled);check(pets.at(-1).raza==='Labrador retriever'&&!photos.has(pets.at(-1).idMascota),'Registro perro sin fotografía')
+ await openCreate();await select('Especie de la mascota','Gato');await select('Raza de la mascota','Siamés');check(editor().textContent.includes('Siamés'),'Raza dependiente de gato');await select('Raza de la mascota','No conozco la raza');check(editor().textContent.includes('No conozco la raza'),'Raza desconocida disponible');await select('Raza de la mascota','Otra');fill(document.querySelector('[aria-label="Raza personalizada"]'),'Raza personalizada QA');await tick()
+ chooseFile(document.querySelector('.mascotas-photo-section [type=file]'));await crop();check(!!btn('Quitar foto seleccionada'),'Foto pendiente puede quitarse');btn('Quitar foto seleccionada').click();await tick();check(!btn('Quitar foto seleccionada'),'Quitar selección no guarda fotografía');chooseFile(document.querySelector('.mascotas-photo-section [type=file]'));await crop();btn('Guardar',editor()).click();await wait(()=>!editor());await wait(()=>!btn('Actualizar').disabled);check(photos.has(pets.at(-1).idMascota)&&pets.at(-1).raza==='Raza personalizada QA','Registro gato con fotografía y raza personalizada')
+ let first=row('Luna QA'),edit=btn('Editar',first);edit.focus();edit.click();await wait(editor);check(!document.querySelector('.mascotas-photo-section')&&!editor().textContent.includes('Gestionar fotografía'),'Editar sin sección fotográfica redundante');check(editor().textContent.includes(' Cruce histórico '),'Raza histórica disponible');fill(document.getElementById('pet-name'),'Cambio cancelado');await tick();btn('Cancelar',editor()).click();await wait(()=>!editor());check(pets[0].nombre==='Luna QA','Cancelar conserva datos');await wait(()=>document.activeElement===edit);check(true,'Cerrar restaura foco')
+ btn('Editar',row('Luna QA')).click();await wait(editor);fill(document.getElementById('pet-name'),'Luna editada');await tick();btn('Guardar',editor()).click();await wait(()=>!editor());await wait(()=>!btn('Actualizar').disabled);check(pets[0].especie==='CANINA'&&pets[0].raza===' Cruce histórico '&&photos.has(1),'Editar conserva valores históricos y foto')
+ btn('Editar',row('Luna editada')).click();await wait(editor);await select('Especie de la mascota','Gato');await select('Raza de la mascota','Persa');fill(editor().querySelector('[type=date]'),'2020-05-12');await tick();btn('Guardar',editor()).click();await wait(()=>!editor());await wait(()=>!btn('Actualizar').disabled);check(pets[0].raza==='Persa'&&pets[0].fechaNacimiento==='2020-05-12'&&photos.has(1),'Editar raza y nacimiento mantiene foto y fecha civil')
+ btn('Fotografía',row('Luna editada')).click();await wait(dialog);check(dialog().textContent.includes('Foto actual de Luna editada'),'Nombre dinámico en fotografía');check(btn('Guardar fotografía',dialog()).disabled,'Guardar fotografía deshabilitado sin cambios')
+ const original=photos.get(1);chooseFile(dialog().querySelector('[type=file]'));await crop();check(!btn('Guardar fotografía',dialog()).disabled,'Recorte pendiente habilita guardado');btn('Cancelar',dialog()).click();await wait(()=>!dialog());check(photos.get(1)===original,'Cancelar fotografía conserva original')
+ btn('Fotografía',row('Luna editada')).click();await wait(dialog);chooseFile(dialog().querySelector('[type=file]'));await crop();btn('Guardar fotografía',dialog()).click();await tick();check(btn('Guardando…',dialog())?.disabled,'Guardado fotografía bloquea doble envío');await wait(()=>btn('Guardar fotografía',dialog())?.disabled);check(photos.get(1)!==original,'Reemplazo fotográfico guardado')
+ const oldConfirm=window.confirm;window.confirm=()=>true;try{btn('Eliminar fotografía',dialog()).click();await wait(()=>!photos.has(1));await wait(()=>dialog().textContent.includes('todavía no tiene fotografía'))}finally{window.confirm=oldConfirm}check(pets.some(p=>p.idMascota===1),'Eliminar fotografía conserva mascota');btn('Cerrar',dialog()).click();await wait(()=>!dialog());check(!writes.some(w=>w.method==='delete'&&!w.url.endsWith('/foto')),'No se elimina ninguna mascota')
+ await wait(()=>!btn('Actualizar').disabled);await openCreate();const colors=getComputedStyle(btn('Guardar',editor()));check(colors.backgroundColor==='rgb(59, 35, 130)','Guardar violeta institucional');const cancel=getComputedStyle(btn('Cancelar',editor()));check(cancel.borderTopColor==='rgb(221, 208, 247)','Cancelar borde lavanda')
+ for(const label of ['Especie de la mascota','Raza de la mascota','Sexo']){const trigger=document.querySelector(`[aria-label="${label}"]`);trigger.scrollIntoView({block:'nearest'});const before=box();trigger.click();await wait(()=>document.querySelector('[role=listbox]'));const menu=document.querySelector('[role=listbox]'),r=menu.getBoundingClientRect();check(Math.abs(box().height-before.height)<1,label+' sin cambio de altura');check(r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,label+' dentro de viewport');key(document.activeElement,'Escape');await tick()}
+ document.querySelector('[aria-label="Especie de la mascota"]').click();await tick();key(document.activeElement,'ArrowDown');await tick();check(document.activeElement.getAttribute('role')==='option','Flechas navegan opciones');key(document.activeElement,'Tab');await tick();check(!document.querySelector('[role=listbox]')&&document.querySelector('[role=dialog]').contains(document.activeElement),'Tab cierra menú y conserva foco en modal')
+ btn('Cancelar',editor()).click();await wait(()=>!editor());check(document.documentElement.scrollWidth<=innerWidth,'Sin desbordamiento horizontal de página');document.getElementById('qa-result').textContent='OK '+passed.length+' · '+passed.join(' · ')
+ }catch(error){document.getElementById('qa-result').textContent='FALLO '+error.message+' · '+passed.join(' · ')}
+}
+createRoot(document.getElementById('root')).render(h(AuthProvider,null,h('div',{className:'qa-tools'},h('p',null,'QA AISLADA · API simulada · Sin PostgreSQL'),h('button',{onClick:run},'Comprobar mascotas'),h('output',{id:'qa-result'})),h('div',{style:{padding:'16px'}},h(Mascotas))))
+if(q.has('auto')){await wait(()=>btn('Comprobar mascotas'));btn('Comprobar mascotas').click()}
+</script></html>

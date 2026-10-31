@@ -1,26 +1,31 @@
+import {Link} from 'react-router-dom'
 import { Bell, Check, RefreshCw, X } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, errorText } from '../lib/api'
 
 export default function RecordatoriosBell() {
+  const request=useRef(null)
   const [avisos,setAvisos] = useState([])
   const [abierto,setAbierto] = useState(false)
   const [cargando,setCargando] = useState(false)
   const [error,setError] = useState('')
-  const cargar = useCallback(async () => {
+  const cargar = useCallback(() => {
+    if(request.current)return request.current
     setCargando(true)
-    try {
-      const {data} = await api.get('/recordatorios/mis')
-      setAvisos(Array.isArray(data) ? data : [])
-      setError('')
-    } catch(err) { setError(errorText(err)) }
-    finally { setCargando(false) }
+    request.current=api.get('/recordatorios/mis').then(({data})=>{
+      if(!Array.isArray(data))throw Error('No se pudieron interpretar los recordatorios.')
+      setAvisos(data);setError('')
+    }).catch(err=>setError(err.response?errorText(err):err.message||'No se pudieron consultar los avisos.'))
+      .finally(()=>{request.current=null;setCargando(false)})
+    return request.current
   }, [])
   useEffect(() => {
-    cargar()
-    const timer = window.setInterval(cargar, 120000)
-    return () => window.clearInterval(timer)
-  }, [cargar])
+    let active=true
+    Promise.resolve().then(()=>{if(active)cargar()})
+    const timer=window.setInterval(cargar,120000)
+    window.addEventListener('focus',cargar)
+    return()=>{active=false;window.clearInterval(timer);window.removeEventListener('focus',cargar)}
+  },[cargar])
   async function leer(id) {
     try {
       await api.patch(`/recordatorios/${id}/leido`)
@@ -40,6 +45,7 @@ export default function RecordatoriosBell() {
       <ul className="space-y-2">{avisos.map(a=><li key={a.idRecordatorio} className={`rounded-xl p-3 border ${a.leido?'bg-white border-violet-100':'bg-[#f7edff] border-purple-200'}`}>
         <p className="font-semibold text-sm">{a.nombreMascota} · {a.nombreVacuna}</p>
         <p className="text-xs text-[#725b90] mt-1">{a.mensaje} · {a.fechaDosis}</p>
+        <Link to={`/panel/vacunas?paciente=${a.idMascota}`} onClick={()=>setAbierto(false)} className="mt-2 block text-xs font-semibold text-[#3B2382] underline">Ver en Mis vacunas</Link>
         {!a.leido&&<button onClick={()=>leer(a.idRecordatorio)} className="mt-2 flex items-center gap-1 text-xs font-semibold text-[#6927a9] hover:underline"><Check size={14}/> Marcar como leído</button>}
       </li>)}</ul>
     </div>}

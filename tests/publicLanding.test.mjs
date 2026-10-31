@@ -32,6 +32,6 @@ test('errores y respuestas malformadas no se convierten en comunidad vacía',asy
 })
 test('solo consulta GET público y propaga la cancelación; no llama perfiles ni recursos clínicos',async()=>{
   const calls=[],signal=new AbortController().signal
-  const client={get:async(url,config)=>{calls.push({url,signal:config.signal});return {data:[{id:1,foto:true}]}}}
-  assert.equal((await loadPublications(client,signal)).length,1);assert.deepEqual(calls,[{url:'/publicaciones',signal}])
+  const client={get:async(url,config)=>{calls.push({url,signal:config.signal,params:config.params});return {data:{content:[{id:1,foto:true}]}}}}
+  assert.equal((await loadPublications(client,signal)).length,1);assert.deepEqual(calls,[{url:'/publicaciones/pagina',signal,params:{size:3}}])
 })

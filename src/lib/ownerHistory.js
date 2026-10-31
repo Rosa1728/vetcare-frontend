@@ -1,5 +1,5 @@
 import {pendingDoseRows} from './vaccineDoses.js'
-import { fullName } from './display.js'
+import { professionalName } from './display.js'
 import { appointmentTime } from './vetAgenda.js'
 import { historicalAge } from './attentions.js'
 import { limaToday } from './clinicalHistory.js'
@@ -43,7 +43,7 @@ export function historyAttentionRow(attention, record) {
   if (!attention || String(attention.idHistoria) !== String(record.history.idHistoria)) throw new Error('La atención no pertenece al expediente seleccionado.')
   const vet = record.sections.veterinarios.data?.find(v => String(v.idVeterinario) === String(attention.idVeterinario))
   const cita = record.sections.citas.data?.find(c => String(c.idCita) === String(attention.idCita))
-  return { attention, pet: record.pet, vet, cita, vetName: fullName(vet) || 'Veterinario no disponible' }
+  return { attention, pet: record.pet, vet, cita, vetName: professionalName(vet) || 'Veterinario no disponible' }
 }
 export function nextHistoryTab(current, key) {
   const index = ownerHistoryTabs.indexOf(current)

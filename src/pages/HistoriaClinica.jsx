@@ -7,7 +7,7 @@ import OwnerClinicalHistory from '../components/OwnerClinicalHistory'
 import PrettySelect from '../components/PrettySelect'
 import { useAuth } from '../contexts/AuthContext'
 import { api, errorText } from '../lib/api'
-import { dateDisplay, fullName, listOf } from '../lib/display'
+import { dateDisplay, professionalName, listOf } from '../lib/display'
 import { clinicalSummary, clinicalTimeline, loadClinicalHistory, sortClinicalEvents } from '../lib/clinicalHistory'
 
 const labels = { atenciones: 'Atenciones clínicas', vacunas: 'Vacunas', citas: 'Citas', veterinarios: 'Profesionales' }
@@ -109,7 +109,7 @@ function ClinicalRecord({ user }) {
   const doses = record?.sections.vacunas.data?.filter(v => v.proximaDosis).sort((a, b) => a.proximaDosis.localeCompare(b.proximaDosis)) || []
   const vetName = vetId => {
     const vet = record?.sections.veterinarios.data?.find(v => String(v.idVeterinario) === String(vetId))
-    return fullName(vet) || (vetId == null ? 'Veterinario no registrado' : `Veterinario #${vetId}${record?.sections.veterinarios.error ? ' · nombre no disponible' : ''}`)
+    return professionalName(vet) || (vetId == null ? 'Veterinario no registrado' : `Veterinario #${vetId}${record?.sections.veterinarios.error ? ' · nombre no disponible' : ''}`)
   }
   const sectionsFailed = record && Object.values(record.sections).some(section => section.error)
 

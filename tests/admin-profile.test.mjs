@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import {adminContactErrors,adminContact} from '../src/lib/adminProfile.js'
 import {profileChanges} from '../src/lib/profile.js'
 test('ADMIN exige celular peruano, sin cambiar validación compartida',()=>{
- for(const nroCelular of ['', '782912','899111222','99911122','9991112223','+51999111222','999 11122','99911122a']) assert.ok(adminContactErrors({nroCelular}).nroCelular)
+ for(const nroCelular of ['782912','899111222','99911122','9991112223','+51999111222','999 11122','99911122a']) assert.ok(adminContactErrors({nroCelular}).nroCelular)
+ assert.deepEqual(adminContactErrors({nroCelular:'',direccion:''}),{})
  assert.deepEqual(adminContactErrors({nroCelular:' 999111222 ',direccion:'Lima'}),{})
  assert.deepEqual(profileChanges({nroCelular:'782912'},{nroCelular:''}),{nroCelular:'782912'})
 })

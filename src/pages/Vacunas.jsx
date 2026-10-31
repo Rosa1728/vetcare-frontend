@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { CalendarDays, CheckCircle2, ChevronDown, ChevronUp, FileText, Heart, ShieldCheck, Syringe, UserRound, AlertCircle, Plus, RefreshCw } from 'lucide-react'
+import VaccineApplicationDialog from '../components/VaccineApplicationDialog'
+import {AtencionForm} from './Atenciones'
+import { useEffect, useId, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { CalendarDays, CheckCircle2, ChevronDown, ChevronUp, FileText, Heart, ShieldCheck, Syringe, Pencil, Clock3, UserRound, AlertCircle, Plus, RefreshCw } from 'lucide-react'
 import PrettySelect from '../components/PrettySelect'
 import PetAvatar from '../components/PetAvatar'
 import VaccineCalendar from '../components/VaccineCalendar'
 import VaccineEditor from '../components/VaccineEditor'
 import { api } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
-import { fullName } from '../lib/display'
+import { professionalName } from '../lib/display'
 import { historicalAge } from '../lib/attentions'
 import { limaToday } from '../lib/clinicalHistory'
 import { allergyEvaluation, hasClinicalText, vaccineDateLabel, weightEvolution } from '../lib/ownerHistory'
@@ -16,20 +18,25 @@ import './Vacunas.css'
 const collection=data=>{if(!Array.isArray(data)&&!Array.isArray(data?.content))throw Error('Listado con formato inesperado');return Array.isArray(data)?data:data.content}
 function Panel({title,icon:Icon,children,subtitle,action}){return <section className="vax-panel"><header><div><h2><Icon size={21}/>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div>{action}</header>{children}</section>}
 function VaccineRow({v,applied,pet,vetName,canWrite,clinical,canApply,own,onAction}){
-  const [open,setOpen]=useState(false)
+  const [open,setOpen]=useState(false),detailsId=useId()
   const extra=hasClinicalText(v.observaciones),hasDetails=extra||clinical
   const overdue=!applied&&v.estadoProximaDosis==='VENCIDA'
+  if(!applied)return <article className={`vax-record vax-record-scheduled ${clinical?'clinical':''}`}>
+    <div className={`vax-record-top ${canWrite&&own?'has-actions':''}`}><div className="vax-planned-info"><div className="vax-planned-identity"><span className="vax-record-icon"><Syringe size={24}/></span><div className="vax-record-name"><h3>{v.nombre}</h3><span className="vax-status">Programada</span><p>Paciente: {pet.nombre}</p></div></div><div className="vax-planned-meta"><p><CalendarDays size={18}/><span><small>Fecha programada{overdue?' · vencida':''}</small><strong>{vaccineDateLabel(v.proximaDosis)}</strong></span></p><p><UserRound size={18}/><span><small>Veterinario</small><strong>{vetName}</strong></span></p><p><Clock3 size={18}/><span><small>Recordatorio al propietario</small><strong>Automático</strong><small>Avisos internos: 7 días, 1 día y el mismo día. No confirma envío de correo.</small></span></p></div></div>
+    {canWrite&&own&&<div className="vax-record-actions"><button onClick={()=>onAction('edit',v)}><Pencil size={16}/>Editar programación</button><button className="vax-positive" disabled={!canApply} onClick={()=>onAction('apply',v)}><CheckCircle2 size={16}/>Registrar aplicación</button></div>}</div>
+    {hasDetails&&<><button className="vax-indications" aria-label={`${open?'Ocultar':'Ver'} indicaciones de ${v.nombre}`} aria-controls={detailsId} aria-expanded={open} onClick={()=>setOpen(value=>!value)}><FileText size={20}/><span>Indicaciones y observaciones</span>{open?<ChevronUp size={18}/>:<ChevronDown size={18}/>}</button>{open&&<div id={detailsId} className="vax-record-details">{extra?<p>{v.observaciones}</p>:<p>No se registraron indicaciones adicionales.</p>}</div>}</>}
+    {v.fechaAplicacion&&<p className="vax-footnote">Próxima dosis asociada a una aplicación anterior; no es un nuevo registro de aplicación.</p>}
+  </article>
   return <article className={`vax-record ${clinical?'clinical':''}`}>
     <div className="vax-record-main"><span className="vax-record-icon"><Syringe size={24}/></span><div className="vax-record-name"><h3>{v.nombre}</h3><p>Paciente: {pet.nombre}</p></div><div className="vax-record-meta"><p><CalendarDays size={16}/><span><small>{applied?'Fecha de aplicación':'Fecha programada'}</small><strong>{vaccineDateLabel(applied?v.fechaAplicacion:v.proximaDosis)}</strong></span></p><p><UserRound size={16}/><span><small>Veterinario</small><strong>{vetName}</strong></span></p></div>{applied&&<div className="vax-next-date"><small>Próxima dosis</small><span>{v.proximaDosis?vaccineDateLabel(v.proximaDosis):'No programada'}</span></div>}<span className={`vax-status ${applied?'applied':overdue?'overdue':''}`}>{applied?'Aplicada':overdue?'Pendiente · vencida':'Programada'}</span>
       {hasDetails&&<button className="vax-link" aria-label={`${open?'Ocultar':'Ver'} ${applied?'detalle':'indicaciones'} de ${v.nombre}`} aria-expanded={open} onClick={()=>setOpen(value=>!value)}>{open?'Ocultar':applied?'Ver detalle':'Ver indicaciones'}{open?<ChevronUp size={16}/>:<ChevronDown size={16}/>}</button>}
     </div>
     {open&&<div className="vax-record-details">{applied&&v.fechaProgramada&&<p>Fecha originalmente programada: {vaccineDateLabel(v.fechaProgramada)}</p>}{extra?<><h4><FileText size={18}/>{applied?'Observaciones del veterinario':'Indicaciones del veterinario'}</h4><p>{v.observaciones}</p></>:clinical?<p>No se registraron indicaciones adicionales.</p>:null}{clinical&&!applied&&<p className="vax-reminder">Recordatorios automáticos: 7 días antes, 1 día antes, hoy y al vencer. No confirma entrega de correo.</p>}</div>}
     {clinical&&!applied&&v.fechaAplicacion&&<p className="vax-footnote">Próxima dosis asociada a una aplicación anterior; no es un nuevo registro de aplicación.</p>}
-    {canWrite&&own&&<div className="vax-record-actions">{applied?<button onClick={()=>onAction('note',v)}>Editar nota</button>:<><button onClick={()=>onAction('edit',v)}>Editar</button><button onClick={()=>onAction('reschedule',v)}>Reprogramar</button><button className="vax-positive" disabled={!canApply} onClick={()=>onAction('apply',v)}><CheckCircle2 size={16}/>Registrar en atención</button></>}</div>}
+    {canWrite&&own&&<div className="vax-record-actions"><button onClick={()=>onAction('note',v)}>Editar nota</button></div>}
   </article>
 }
 function PatientVaccines({pet,vets,me,role,from,to}){
-  const navigate=useNavigate()
   const clinical=role==='VETERINARIO',[revision,setRevision]=useState(0),[loaded,setLoaded]=useState(null),[form,setForm]=useState(null),[success,setSuccess]=useState(''),[oldest,setOldest]=useState(false)
   useEffect(()=>{if(!success)return;const timer=setTimeout(()=>setSuccess(''),4000);return()=>clearTimeout(timer)},[success])
   useEffect(()=>{
@@ -63,14 +70,14 @@ function PatientVaccines({pet,vets,me,role,from,to}){
   const ownScheduled=current.rows.filter(v=>!v.fechaAplicacion&&String(v.idVeterinario)===String(me?.idVeterinario))
   const attentions=patientAttentions(current.attentions,current.history?.idHistoria,me?.idVeterinario)
   const weight=weightEvolution(attentions),a=current.history?.antecedentes,allergy=allergyEvaluation(a)
-  const onAction=(mode,item)=>{if(mode==='apply'||mode==='application'){navigate('/panel/citas');return}setForm({mode,item})}
-  const vetName=id=>fullName(vets.find(v=>String(v.idVeterinario)===String(id)))||'Profesional no disponible'
+  const onAction=(mode,item)=>setForm({mode:mode==='apply'?'verify':mode,item})
+  const vetName=id=>professionalName(vets.find(v=>String(v.idVeterinario)===String(id)))||'Profesional no disponible'
   const canWrite=clinical&&!!me?.idVeterinario&&!loading
   const alerts=[...(a?.estadoAlergias==='ALERGIAS_REGISTRADAS'&&a?.alergiasSustancias?[a.alergiasSustancias]:[]),...(hasClinicalText(a?.alertasMedicas)?[a.alertasMedicas]:[])]
   const expired=allUpcoming.filter(v=>v.proximaDosis<limaToday())
   return <>
     {loading&&<p className="vax-loading" role="status">Actualizando vacunas…</p>}
-    <div className="vax-context-bar">{!clinical&&<div className="vax-next-indicator"><CalendarDays size={26}/><div><small>{next&&next.proximaDosis<limaToday()?'Dosis pendiente':'Próxima vacuna'}</small><strong>{next?`${next.nombre} · ${vaccineDateLabel(next.proximaDosis)}`:'No hay próximas dosis registradas.'}</strong></div></div>}{clinical&&<div className="vax-write-actions"><button className="vax-primary" disabled={!canWrite} onClick={()=>onAction('schedule',{})}><Plus size={17}/>Programar vacuna</button><button disabled={!canWrite||current.clinicalError} onClick={()=>onAction('application',{})}><Syringe size={17}/>Registrar desde cita</button></div>}<button className="vax-reload" disabled={loading} onClick={reload}><RefreshCw size={15}/>Actualizar</button></div>
+    <div className="vax-context-bar">{!clinical&&<div className="vax-next-indicator"><CalendarDays size={26}/><div><small>{next&&next.proximaDosis<limaToday()?'Dosis pendiente':'Próxima vacuna'}</small><strong>{next?`${next.nombre} · ${vaccineDateLabel(next.proximaDosis)}`:'No hay próximas dosis registradas.'}</strong></div></div>}{clinical&&<div className="vax-write-actions"><button className="vax-primary" disabled={!canWrite} onClick={()=>onAction('schedule',{})}><Plus size={17}/>Programar vacuna</button></div>}<button className="vax-reload" disabled={loading} onClick={reload}><RefreshCw size={15}/>Actualizar</button></div>
     {success&&<p className="vax-success" role="status">{success}</p>}{current.clinicalError&&<p className="vax-feedback" role="alert">No se pudo cargar todo el resumen clínico. Actualiza antes de registrar una aplicación.</p>}
     <div className="vax-layout"><div className="vax-main-list">
       <Panel title={clinical?`Vacunas programadas (${upcoming.length})`:'Próximas vacunas'} icon={CalendarDays} subtitle={clinical?null:'Dosis registradas pendientes o por venir.'}>{upcoming.length?upcoming.map(v=><VaccineRow key={`next-${v.idVacuna}`} v={v} clinical={clinical} pet={pet} vetName={vetName(v.idVeterinario)} canApply={!current.clinicalError} canWrite={canWrite&&!v.fechaAplicacion} own={String(v.idVeterinario)===String(me?.idVeterinario)} onAction={(mode,item)=>{if(item.fechaAplicacion)return;onAction(mode,item)}}/>):<p className="vax-empty">No hay próximas dosis registradas en este rango.</p>}</Panel>
@@ -78,7 +85,9 @@ function PatientVaccines({pet,vets,me,role,from,to}){
     </div><aside className="vax-aside"><VaccineCalendar key={pet.idMascota} rows={current.rows.map(v=>({...v,proximaDosis:(!from||v.proximaDosis>=from)&&(!to||v.proximaDosis<=to)?v.proximaDosis:null,fechaAplicacion:(!from||v.fechaAplicacion>=from)&&(!to||v.fechaAplicacion<=to)?v.fechaAplicacion:null}))}/>
       {clinical?<><Panel title="Resumen del paciente" icon={FileText}><div className="vax-patient"><PetAvatar pet={pet} size={65}/><div><h3>{pet.nombre}</h3><p>{[pet.especie,pet.raza,pet.sexo].filter(Boolean).join(' · ')}</p><p>{historicalAge(pet.fechaNacimiento,limaToday())}</p></div></div><dl className="vax-patient-facts"><div><dt>Propietario</dt><dd>{pet.nombrePropietario||'No disponible'}</dd></div><div><dt>Último peso autorizado</dt><dd>{current.clinicalError?'No se pudieron consultar las mediciones.':weight.latest?`${weight.latest.weight} kg · ${vaccineDateLabel(weight.latest.date.slice(0,10))}`:'Sin medición disponible'}</dd></div><div><dt>Alergias</dt><dd>{!current.history?'No se pudo consultar la evaluación de alergias.':allergy.status==='known'?a.alergiasSustancias:allergy.status==='none'?allergy.label:'Sin información de alergias registrada.'}</dd></div></dl></Panel><Panel title={current.history?`Alertas clínicas (${alerts.length+expired.length})`:'Alertas clínicas'} icon={AlertCircle}>{!current.history&&<p className="vax-empty" role="alert">No se pudieron consultar las alertas de antecedentes.</p>}{alerts.length||expired.length?<ul className="vax-alerts">{alerts.map((text,i)=><li key={`clinical-${i}`}>{text}</li>)}{expired.map(v=><li key={`dose-${v.idVacuna}`}>Dosis pendiente vencida: {v.nombre} · {vaccineDateLabel(v.proximaDosis)}</li>)}</ul>:current.history?<p className="vax-empty">No hay alertas clínicas registradas para este paciente.</p>:null}</Panel></>:<Panel title={next?'Preparación para la próxima visita':'Preparación para una futura visita'} icon={FileText} subtitle="Te recomendamos tener en cuenta lo siguiente:"><div className="vax-preparation">{[[FileText,'Lleva la cartilla de vacunación.'],[Heart,'Si tu mascota estuvo enferma, comunícalo antes de la cita.'],[ShieldCheck,'Observa cualquier reacción posterior e informa al veterinario si ocurre.']].map(([Icon,text])=><p key={text}><Icon size={20}/>{text}</p>)}</div><p className="vax-footnote">Orientación general. Una dosis prevista no constituye una cita confirmada.</p></Panel>}
     </aside></div>
-    {form&&<VaccineEditor key={`${form.mode}-${form.item?.idVacuna||'new'}`} mode={form.mode} item={form.item} pet={pet} vet={me} attentions={attentions} scheduled={ownScheduled} onClose={()=>setForm(null)} onDone={()=>{setForm(null);setSuccess('Registro guardado correctamente.');notifyVaccinesChanged(pet.idMascota)}}/>}
+    {form?.mode==='verify'&&<VaccineApplicationDialog dose={form.item} pet={pet} vet={me} historyId={current.history?.idHistoria} onClose={()=>setForm(null)} onContinue={choice=>setForm({mode:choice.attention?'apply':'clinical',item:form.item,choice})}/>}
+    {form?.mode==='clinical'&&<AtencionForm mode="create" item={{idCita:form.choice.cita.idCita}} citas={[form.choice.cita]} mascotas={[pet]} veterinarios={vets} initialDose={form.item.idVacuna} onClose={()=>setForm(null)} onDone={()=>{setForm(null);setSuccess('Atención y aplicación registradas correctamente.')}}/>}
+    {form&&!['verify','clinical'].includes(form.mode)&&<VaccineEditor key={`${form.mode}-${form.item?.idVacuna||'new'}`} mode={form.mode} item={form.item} pet={pet} vet={me} attentions={form.choice?.attention?[form.choice.attention]:attentions} scheduled={ownScheduled} onClose={()=>setForm(null)} onDone={()=>{setForm(null);setSuccess('Registro guardado correctamente.');notifyVaccinesChanged(pet.idMascota)}}/>}
   </>
 }
 function VaccineWorkspace({user}){
@@ -97,4 +106,4 @@ function VaccineWorkspace({user}){
     {!current?<p role="status" className="vax-feedback">Cargando pacientes autorizados…</p>:current.error?<div role="alert" className="vax-feedback"><p>{vaccineError(current.error)}</p><button onClick={()=>setRevision(v=>v+1)}>Reintentar</button></div>:!pets.length?<p className="vax-empty">No hay mascotas autorizadas disponibles.</p>:<><div className="vax-filters"><label>{clinical?'Paciente':'Mascota'}<div className="vax-pet-select"><PetAvatar pet={selected} size={32}/><PrettySelect label={clinical?'Paciente':'Mascota'} value={selectedId} onChange={choose} required keyboardNavigation options={pets.map(p=>({value:p.idMascota,label:p.nombre}))}/></div></label>{clinical&&<><label>Propietario<PrettySelect label="Propietario del paciente" value={String(selected.idPropietario)} onChange={owner=>choose(pets.find(p=>String(p.idPropietario)===owner).idMascota)} required keyboardNavigation options={owners}/></label><label>Desde<input className="input" type="date" aria-label="Desde" value={from} max={to||undefined} onChange={e=>setFrom(e.target.value)}/></label><label>Hasta<input className="input" type="date" aria-label="Hasta" value={to} min={from||undefined} onChange={e=>setTo(e.target.value)}/></label></>}</div>{from&&to&&from>to?<p className="vax-feedback" role="alert">La fecha Desde no puede ser posterior a Hasta.</p>:<PatientVaccines key={selectedId} pet={selected} vets={current.vets} me={current.me} role={user.role} from={from} to={to}/>}</>}
   </section>
 }
-export default function Vacunas(){const {user}=useAuth();return <VaccineWorkspace key={`${user?.idUsuario}-${user?.role}`} user={user}/>}
+export default function Vacunas(){const {user}=useAuth(),location=useLocation();return <VaccineWorkspace key={`${user?.idUsuario}-${user?.role}-${location.search}`} user={user}/>}

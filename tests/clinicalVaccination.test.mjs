@@ -4,7 +4,7 @@ import {vaccinationPayload,selectScheduledDose,vaccinationDateLabel} from '../sr
 import {vaccineLists,vaccineEvents} from '../src/lib/vaccines.js'
 import {ownerClinicalModel} from '../src/lib/ownerHistory.js'
 const today='2030-01-10'
-const pending=[{idVacuna:9,nombre:'Antirrábica',proximaDosis:'2030-01-28',observaciones:'Indicación clínica áéíóúñ'}]
+const pending=[{idVacuna:9,nombre:'Antirrábica',proximaDosis:today,observaciones:'Indicación clínica áéíóúñ'}]
 const row={tipo:'aplicada',idVacunaProgramada:'',nombre:'Séxtuple',fechaAplicacion:today,proximaDosis:'',observaciones:''}
 test('atención sin vacunación conserva el contrato vacío',()=>assert.deepEqual(vaccinationPayload([],pending,today),[]))
 test('selección recupera nombre e indicaciones sin confundir fecha programada y aplicación',()=>{
@@ -48,4 +48,11 @@ test('aplicación y su próxima dosis aparecen una vez en calendario y expedient
  assert.equal(vaccineEvents(rows).length,2)
  const model=ownerClinicalModel({pet:{},history:{},sections:{atenciones:{data:[]},vacunas:{data:rows}}},today)
  assert.equal(model.doses.length,1);assert.equal(model.applied.length,1)
+})
+
+test('dosis programada no admite una aplicación anticipada',()=>{
+ const future=[{...pending[0],proximaDosis:'2030-01-11'}]
+ assert.throws(()=>vaccinationPayload([selectScheduledDose(row,'9',future)],future,today),/anterior a la fecha programada/)
+ const past=[{...pending[0],proximaDosis:'2030-01-09'}]
+ assert.equal(vaccinationPayload([selectScheduledDose(row,'9',past)],past,today)[0].fechaAplicacion,today)
 })

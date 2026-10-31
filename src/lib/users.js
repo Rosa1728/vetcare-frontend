@@ -26,7 +26,7 @@ export function userFormErrors(v){
  if(v.tipoDocumento==='DNI'&&!/^\d{8}$/.test(v.nroDocumento||''))errors.nroDocumento='El DNI debe tener 8 dígitos.'
  if(['CE','PASAPORTE'].includes(v.tipoDocumento)&&!/^[A-Za-z0-9]{6,20}$/.test(v.nroDocumento||''))errors.nroDocumento='Usa entre 6 y 20 letras o números.'
  if(v.nroCelular&&!/^\+?[0-9][0-9 ()-]{5,19}$/.test(v.nroCelular))errors.nroCelular='Ingresa un celular válido de 6 a 20 caracteres.'
- if('contrasena' in v){const invalid=passwordError(v.contrasena);if(invalid)errors.contrasena=new TextEncoder().encode(v.contrasena||'').length>72?'La contraseña es demasiado larga. Usa una más breve.':invalid.replace(' Máximo 72 bytes.','')}
+ if('contrasena' in v){const invalid=passwordError(v.contrasena);if(invalid)errors.contrasena=invalid}
  return errors
 }
 export function userServerErrors(error){

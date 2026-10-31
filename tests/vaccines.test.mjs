@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {monthDays,moveMonth,patientAttentions,vaccineEvents,vaccineLists,validateVaccineForm,vaccineError} from '../src/lib/vaccines.js'
+import {monthDays,moveMonth,patientAttentions,vaccineEvents,vaccineLists,validateVaccineForm,vaccineError,compatibleVaccineAppointments} from '../src/lib/vaccines.js'
 const rows=[{idVacuna:1,idMascota:1,nombre:'Vacuna',proximaDosis:'2026-11-15',fechaAplicacion:'2026-10-20'},{idVacuna:2,idMascota:1,nombre:'Refuerzo',proximaDosis:'2026-12-20'},{idVacuna:3,idMascota:1,nombre:'Anterior',fechaAplicacion:'2026-07-20'}]
 test('dos estados independientes: una aplicación puede conservar próxima dosis real',()=>{const m=vaccineLists(rows);assert.deepEqual(m.upcoming.map(v=>v.idVacuna),[1,2]);assert.deepEqual(m.applied.map(v=>v.idVacuna),[1,3])})
 test('rango de fechas y orden no modifican registros ni convierten pendientes en aplicadas',()=>{const before=JSON.stringify(rows),m=vaccineLists(rows,{from:'2026-10-01',to:'2026-11-30'});assert.equal(m.upcoming.length,1);assert.equal(m.applied.length,1);assert.equal(JSON.stringify(rows),before);assert.deepEqual(vaccineLists(rows,{oldest:true}).applied.map(v=>v.idVacuna),[3,1])})
@@ -12,3 +12,24 @@ test('aplicación exige atención autorizada, fecha efectiva coherente y próxim
 test('edición de nota no obliga fechas ni crea una aplicación',()=>{assert.equal(validateVaccineForm('note',{observaciones:'Texto clínico\náéíóúñ'},[]),'')})
 test('errores esperados de autorización y conflicto tienen mensajes comprensibles',()=>{for(const status of [400,401,403,404,409])assert.ok(vaccineError({response:{status}}).length>15)})
 test('conflicto HTTP genérico de Spring se traduce a un mensaje específico',()=>{assert.match(vaccineError({response:{status:409,data:{error:'Conflict'}}}),/ya fue aplicado/);assert.match(vaccineError({request:{},message:'Network Error'}),/No se pudo contactar/)})
+
+const dose={idVacuna:8,idVeterinario:2,proximaDosis:'2026-11-02'},pet={idMascota:1},vet={idVeterinario:2},now=Date.parse('2026-11-03T10:05:00-05:00')
+const appointment={idCita:10,idMascota:1,idVeterinario:2,fechaCita:'2026-11-03T10:00:00',estado:'ATENDIDA'}
+const attention={idCita:10,idAtencion:20,idHistoria:30,idVeterinario:2,fechaAtencion:'2026-11-03T10:05:00'}
+test('aplicación identifica una cita y atención coherentes desde el día programado',()=>{
+ assert.equal(compatibleVaccineAppointments(dose,pet,vet,[appointment],[attention],30,now).length,1)
+ assert.equal(compatibleVaccineAppointments({...dose,proximaDosis:'2026-11-04'},pet,vet,[appointment],[attention],30,now).length,0)
+ assert.equal(compatibleVaccineAppointments(dose,pet,vet,[appointment],[{...attention,idHistoria:31}],30,now).length,0)
+})
+test('no se usa una cita cancelada, sin asistencia, ajena o sin atención',()=>{
+ for(const estado of ['CANCELADA','NO_ASISTIO','PENDIENTE'])assert.equal(compatibleVaccineAppointments(dose,pet,vet,[{...appointment,estado}],[attention],30,now).length,0)
+ for(const c of [{...appointment,idMascota:99},{...appointment,idVeterinario:99}])assert.equal(compatibleVaccineAppointments(dose,pet,vet,[c],[attention],30,now).length,0)
+ assert.equal(compatibleVaccineAppointments(dose,pet,vet,[appointment],[],30,now).length,0)
+})
+test('crear atención exige horario y autorización actuales; abrir no aplica la vacuna',()=>{
+ const current={...appointment,estado:'CONFIRMADA',puedeIniciarAtencion:true}
+ assert.equal(compatibleVaccineAppointments(dose,pet,vet,[current],[],30,now).length,1)
+ assert.equal(compatibleVaccineAppointments(dose,pet,vet,[{...current,puedeIniciarAtencion:false}],[],30,now).length,0)
+ assert.equal(compatibleVaccineAppointments(dose,pet,vet,[current],[],30,now+3600000).length,0)
+ assert.equal(compatibleVaccineAppointments({...dose,fechaAplicacion:'2026-11-03'},pet,vet,[current],[],30,now).length,0)
+})

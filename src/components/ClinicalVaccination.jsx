@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react'
+import {useEffect,useRef,useState} from 'react'
 import {api} from '../lib/api'
 import {limaToday} from '../lib/clinicalHistory'
 import {vaccineError} from '../lib/vaccines'
@@ -7,17 +7,18 @@ import VaccinationDate from './VaccinationDate'
 import {selectScheduledDose,vaccinationDateLabel} from '../lib/clinicalVaccination'
 import './ClinicalVaccination.css'
 
-export default function ClinicalVaccination({petId,vetId,rows,onChange,onPending,busy}) {
+export default function ClinicalVaccination({petId,vetId,rows,onChange,onPending,busy,initialDose}) {
+  const seeded=useRef(false)
   const [loaded,setLoaded]=useState(null),[revision,setRevision]=useState(0)
   useEffect(()=>{
     const controller=new AbortController()
     api.get(`/vacunas/mascota/${petId}`,{signal:controller.signal}).then(({data})=>{
       if(!Array.isArray(data))throw Error('No se pudieron interpretar las vacunas pendientes.')
       const pending=data.filter(v=>String(v.idMascota)===String(petId)&&String(v.idVeterinario)===String(vetId)&&!v.fechaAplicacion)
-      if(!controller.signal.aborted){setLoaded({pending});onPending(pending)}
+      if(!controller.signal.aborted){setLoaded({pending});onPending(pending);if(initialDose&&!seeded.current){const dose=pending.find(v=>String(v.idVacuna)===String(initialDose));if(!dose)throw Error('La dosis seleccionada ya no está pendiente o no está autorizada.');seeded.current=true;onChange([{...selectScheduledDose({key:crypto.randomUUID(),tipo:'aplicada',fechaAplicacion:limaToday()},dose.idVacuna,pending)}])}}
     }).catch(error=>{if(!controller.signal.aborted)setLoaded({error:vaccineError(error)})})
     return()=>controller.abort()
-  },[petId,vetId,revision,onPending])
+  },[petId,vetId,revision,onPending,initialDose,onChange])
   const pending=loaded?.pending||[]
   const change=(index,key,value)=>onChange(rows.map((r,i)=>i===index?{...r,[key]:value}:r))
   return <section className="clinical-vaccination sm:col-span-2" aria-label="Vacunación opcional"><h3>Vacunación <small>— Opcional</small></h3><p>Registra las vacunas administradas durante esta atención o programa próximas dosis.</p>

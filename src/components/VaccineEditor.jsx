@@ -3,6 +3,7 @@ import EditorForm from './EditorForm'
 import { api } from '../lib/api'
 import { appointmentDay } from '../lib/vetAgenda'
 import { vaccineError, validateVaccineForm } from '../lib/vaccines'
+import {professionalName} from '../lib/display'
 import { vaccineDateLabel } from '../lib/ownerHistory'
 export default function VaccineEditor({ mode, item, pet, vet, attentions, scheduled, onClose, onDone }) {
   const sending=useRef(false)
@@ -23,17 +24,17 @@ export default function VaccineEditor({ mode, item, pet, vet, attentions, schedu
   const fields=[
     ...(mode==='application'?[{key:'programacion',label:'Dosis programada o aplicación directa *',options:[{value:'direct',label:'Aplicación directa vinculada a atención'},...scheduled.map(v=>({value:v.idVacuna,label:`${v.nombre} · ${vaccineDateLabel(v.proximaDosis)}`}))]}]:[]),
     ...(planning||mode==='application'?[{key:'nombre',label:mode==='application'?'Nombre (solo aplicación directa)':'Nombre de vacuna *',maxLength:120,wide:true,required:mode!=='application',hidden:mode==='reschedule'}]:[]),
-    ...(applying?[{key:'idAtencion',label:'Atención clínica del paciente *',options:attentions.map(a=>({value:a.idAtencion,label:`${vaccineDateLabel(appointmentDay(a.fechaAtencion))} · ${a.diagnostico||'Consulta registrada'}`}))},{key:'fechaAplicacion',label:'Fecha efectiva de aplicación *',type:'date'}]:[]),
+    ...(applying?[{key:'idAtencion',label:'Atención clínica del paciente *',options:attentions.map(a=>({value:a.idAtencion,label:`${vaccineDateLabel(appointmentDay(a.fechaAtencion))} · ${a.diagnostico||'Consulta registrada'}`}))},{key:'fechaAplicacion',label:'Fecha efectiva de aplicación *',type:'date',min:item?.fechaProgramada||item?.proximaDosis}]:[]),
     ...(mode!=='note'?[{key:'proximaDosis',label:planning?'Fecha programada *':'Próxima dosis (opcional)',type:'date',required:planning}]:[]),
     {key:'observaciones',label:'Observaciones e indicaciones (opcional)',required:false,multiline:true,wide:true,maxLength:500,hidden:mode==='reschedule'},
   ]
-  const initial={...item,...(applying?{proximaDosis:''}:{}),programacion:'direct',fechaAplicacion:item?.fechaAplicacion||(attentions[0]?appointmentDay(attentions[0].fechaAtencion):'')}
+  const initial={...item,...(applying?{proximaDosis:''}:{}),programacion:'direct',idAtencion:applying?attentions[0]?.idAtencion:undefined,fechaAplicacion:item?.fechaAplicacion||(attentions[0]?appointmentDay(attentions[0].fechaAtencion):'')}
   async function save(values){
     sending.current=true
     try{
       let action=mode,selected=item
       if(mode==='application'){selected=scheduled.find(v=>String(v.idVacuna)===String(values.programacion));action=selected?'apply':'direct'}
-      const problem=validateVaccineForm(action,values,attentions)
+      const problem=action==='apply'&&values.fechaAplicacion<(selected.fechaProgramada||selected.proximaDosis)?'La aplicación no puede ser anterior a la fecha programada de vacunación.':validateVaccineForm(action,values,attentions)
       if(problem)throw Object.assign(new Error(problem),{response:{data:{error:problem}}})
       const body={observaciones:values.observaciones??(mode==='application'&&selected?selected.observaciones:null)}
       let url='/vacunas',method='post'
@@ -45,8 +46,8 @@ export default function VaccineEditor({ mode, item, pet, vet, attentions, schedu
     }catch(error){throw Object.assign(new Error(vaccineError(error)),{response:{data:{error:vaccineError(error)}}})}finally{sending.current=false}
   }
   return <EditorForm title={titles[mode]} fields={fields} initial={initial} onSave={save} onClose={()=>{if(!sending.current)onClose()}} onDone={onDone}>
-    <p className="text-sm text-vetcare-text-muted">Paciente: {pet.nombre} · Veterinario responsable: {[vet.nombres,vet.apellidos].filter(Boolean).join(' ')}.</p>
-    {planning&&<p className="mt-2 text-xs text-vetcare-text-muted">Los recordatorios existentes se calculan automáticamente a 7 días, 1 día, hoy o al vencer la dosis. Guardar no confirma el envío de correo.</p>}
+    <p className="text-sm text-vetcare-text-muted">Paciente: {pet.nombre} · Veterinario responsable: {professionalName(vet)}.</p>
+    {planning&&<p className="mt-2 text-xs text-vetcare-text-muted">Los recordatorios existentes se calculan automáticamente a 7 días antes, 1 día antes, hoy o al vencer la dosis, incluyendo programaciones creadas dentro de ese intervalo. Guardar no confirma el envío de correo.</p>}
     {mode==='application'&&<p className="mt-2 text-xs text-vetcare-text-muted">Al elegir una programación existente, dejar vacías las observaciones conserva las que ya estaban registradas.</p>}
     {applying&&!attentions.length&&<p role="alert" className="mt-2 text-sm">No hay atenciones autorizadas disponibles. Registra primero la atención en el módulo clínico existente.</p>}
   </EditorForm>

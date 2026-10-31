@@ -1,6 +1,7 @@
 import {pendingDoseRows} from './vaccineDoses.js'
 import { limaToday } from './clinicalHistory.js'
-import { appointmentDay } from './vetAgenda.js'
+import {attentionWindow} from './clinicalAppointments.js'
+import { appointmentDay, appointmentTime } from './vetAgenda.js'
 export function vaccineLists(rows, { from='', to='', oldest=false }={}) {
   const within = date => date && (!from || date>=from) && (!to || date<=to)
   return {
@@ -52,3 +53,17 @@ export function validateVaccineForm(mode,values,attentions,today=limaToday()) {
 }
 export const VACCINES_CHANGED='vetcare-vaccines-changed'
 export function notifyVaccinesChanged(id) { window.dispatchEvent(new CustomEvent(VACCINES_CHANGED,{detail:{id:String(id)}})) }
+
+// El servidor vuelve a comprobar toda la relación al guardar. Abrir este selector solo consulta.
+export function compatibleVaccineAppointments(dose,pet,vet,citas,attentions,historyId,now=Date.now()) {
+ const planned=dose.fechaProgramada||dose.proximaDosis,today=limaToday(new Date(now))
+ if(!planned||dose.fechaAplicacion||String(dose.idVeterinario)!==String(vet.idVeterinario))return []
+ return citas.filter(c=>String(c.idMascota)===String(pet.idMascota)&&String(c.idVeterinario)===String(vet.idVeterinario)).flatMap(c=>{
+  const attention=attentions.find(a=>String(a.idCita)===String(c.idCita))
+  if(c.estado==='ATENDIDA'&&attention&&String(attention.idHistoria)===String(historyId)&&String(attention.idVeterinario)===String(vet.idVeterinario)){
+   const day=appointmentDay(attention.fechaAtencion)
+   return day>=planned&&day<=today&&appointmentTime(attention.fechaAtencion)>=appointmentTime(c.fechaCita)?[{cita:c,attention}]:[]
+  }
+  return !attention&&today>=planned&&attentionWindow(c,now).canStart?[{cita:c,attention:null}]:[]
+ }).sort((a,b)=>b.cita.fechaCita.localeCompare(a.cita.fechaCita))
+}

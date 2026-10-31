@@ -11,3 +11,18 @@
 .auth-footer{position:relative;text-align:center;margin-top:28px;font-size:13px;color:#5B21B6}.auth-footer>div{display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:10px}.auth-footer>div>span{width:80px;height:1px;background:#E7DAF8}.auth-footer svg{width:24px;height:24px}.auth-footer p{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}.auth-footer p svg{width:17px;height:17px}
 .auth-card .vet-select-trigger{height:46px;min-height:46px;border-color:#E7DAF8;font-size:14px;color:#1F2937}.auth-card .vet-select-menu{position:static;margin-top:6px;box-shadow:none}.auth-card button:focus-visible,.auth-submit:focus-visible{outline:2px solid #3B2382;outline-offset:3px}
 @media(max-width:540px){.auth-page{padding:12px}.auth-frame{padding:26px 16px;border-radius:24px}.auth-logo{font-size:36px;margin-bottom:24px}.auth-logo>svg{width:50px;height:50px}.auth-heading h1{font-size:28px}.auth-heading p{font-size:14px}.auth-card{padding:20px 16px}.auth-form.auth-grid{grid-template-columns:minmax(0,1fr)}.auth-corner-paw{width:42px;height:42px;right:12px;top:14px;opacity:.6}.auth-footer{margin-top:24px}}
+
+/* Ajustes exclusivos del registro: los demás flujos conservan sus medidas. */
+.auth-frame.auth-register{max-width:700px;padding:24px}
+.auth-register .auth-logo{font-size:34px;margin-bottom:16px}
+.auth-register .auth-logo>svg{width:46px;height:46px}
+.auth-register .auth-heading{margin-bottom:16px}
+.auth-register .auth-heading h1{font-size:26px}
+.auth-register .auth-heading p{margin-top:8px;font-size:14px}
+.auth-register .auth-card{padding:20px}
+.auth-register .auth-form{gap:12px 16px}
+.auth-register .auth-field>label,.auth-register .auth-field>span{margin-bottom:5px}
+.auth-register .auth-control input,.auth-register .vet-select-trigger{height:44px;min-height:44px}
+.auth-register .auth-links{margin-top:14px}
+.auth-register .auth-footer{margin-top:16px}
+@media(max-width:540px){.auth-frame.auth-register{padding:20px 14px}.auth-register .auth-card{padding:18px 14px}.auth-register .auth-form{gap:12px}.auth-register .auth-heading h1{font-size:24px}}

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import {professionalName} from '../lib/display'
 import { api } from '../lib/api'
 import {notifyProfilePhotoChanged} from '../lib/profilePhoto'
 
@@ -48,8 +49,7 @@ export function AuthProvider({ children }) {
     const detail = role === 'PROPIETARIO' ? (await api.get('/propietarios/me')).data : role === 'VETERINARIO' ? (await api.get('/veterinarios/me')).data : null
     if (sessionStorage.getItem('vetcare_token') !== token) return
     setProfile(data); setOwner(role === 'PROPIETARIO' ? detail : null); setVet(role === 'VETERINARIO' ? detail : null)
-    const prefix = role === 'VETERINARIO' && ['Dr.', 'Dra.'].includes(detail?.tratamientoProfesional) ? detail.tratamientoProfesional + ' ' : ''
-    setUser(prev => prev?.token === token ? { ...prev, name: prefix + displayName(data, prev.name) } : prev)
+    setUser(prev => prev?.token === token ? { ...prev, name: role==='VETERINARIO'?(professionalName({...data,tratamientoProfesional:detail?.tratamientoProfesional})||prev.name):displayName(data,prev.name) } : prev)
     setProfileError('')
     return {profile:data,owner:role==='PROPIETARIO'?detail:null,vet:role==='VETERINARIO'?detail:null}
   }
@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
         if (role === 'PROPIETARIO') {
           try { const own = await api.get('/propietarios/me'); if (active) setOwner(own.data) } catch { if (active) { setOwner(null); setProfileError('No se pudo cargar la información del propietario. Intenta nuevamente.') } }
         } else if (role === 'VETERINARIO') {
-          try { const mine = await api.get('/veterinarios/me'); if (active) { setVet(mine.data); const prefix = ['Dr.', 'Dra.'].includes(mine.data.tratamientoProfesional) ? mine.data.tratamientoProfesional + ' ' : ''; setUser(prev => prev?.token === user.token ? {...prev, name: prefix + displayName(data, prev.name)} : prev) } } catch { if (active) { setVet(null); setProfileError('No se pudo cargar la información profesional. Intenta nuevamente.') } }
+          try { const mine = await api.get('/veterinarios/me'); if (active) { setVet(mine.data); setUser(prev => prev?.token === user.token ? {...prev, name: professionalName({...data,tratamientoProfesional:mine.data.tratamientoProfesional})||prev.name} : prev) } } catch { if (active) { setVet(null); setProfileError('No se pudo cargar la información profesional. Intenta nuevamente.') } }
         } else { setOwner(null); setVet(null) }
       } catch (err) {
         if (active) setProfileError('No se pudo cargar el perfil. Intenta nuevamente.')

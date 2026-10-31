@@ -6,8 +6,15 @@ export const fullName = value => {
   const inner = [nested.nombres, nested.apellidos].filter(Boolean).join(' ').trim()
   return direct || inner || value.nombreCompleto || value.nombreVeterinario || value.nombreUsuario || ''
 }
+// Solo para profesionales: el atributo asignado por ADMIN decide el prefijo.
+export const professionalName = value => {
+  const name=fullName(value)
+  if(!name)return ''
+  const treatment=['Dr.','Dra.'].includes(value?.tratamientoProfesional)?value.tratamientoProfesional:''
+  return treatment?`${treatment} ${name.replace(/^(?:(?:Dr|Dra)[.]\s*)+/i,'').trim()}`:name
+}
 export const vetLabel = v => {
-  const name = fullName(v)
+  const name = professionalName(v)
   const spec = v?.especialidad || 'Especialidad no indicada'
   return `${name || `Veterinario ${v.idVeterinario}`} — ${spec}`
 }

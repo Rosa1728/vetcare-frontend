@@ -12,5 +12,5 @@ export function featuredPublications(data) {
   })).sort((a, b) => String(b.fechaCreacion || '').localeCompare(String(a.fechaCreacion || '')) || String(b.id).localeCompare(String(a.id), undefined, { numeric: true })).slice(0, 3)
 }
 export async function loadPublications(client, signal) {
-  return featuredPublications((await client.get('/publicaciones', { signal })).data)
+  return featuredPublications((await client.get('/publicaciones/pagina', { signal, params:{size:3} })).data.content)
 }

@@ -20,7 +20,7 @@ import AttentionDetail from '../components/AttentionDetail'
 import { attentionDate, attentionError, attentionPermissions, attentionRows, filterAttentionRows, historicalAge, loadAttentionDetail, loadAttentions, showAttentionPetMetadata } from '../lib/attentions'
 import './Atenciones.css'
 
-export function AtencionForm({ mode, item, citas, mascotas, veterinarios = [], onClose, onDone, onBusyChange }) {
+export function AtencionForm({ mode, item, citas, mascotas, veterinarios = [], onClose, onDone, onBusyChange, initialDose }) {
   const {user,vet}=useAuth()
   const role=user?.role
   const sending=useRef(false),opening=useRef(null)
@@ -46,7 +46,7 @@ export function AtencionForm({ mode, item, citas, mascotas, veterinarios = [], o
     if(mode==='create'&&!context){setError('No se pudo habilitar esta cita. Cierra el formulario y actualiza la agenda para reintentar.');return}
     sending.current=true;setBusy(true)
     try{const payload=clinicalPayload(values,mode==='create'?context.cita:null,context?.history,role)
-      if(mode==='create'){if(role==='VETERINARIO'&&vaccination.length)payload.vacunas=vaccinationPayload(vaccination,pendingVaccines);await api.post('/atenciones',payload);if(vaccination.length)notifyVaccinesChanged(cita.idMascota);}else await api.put(`/atenciones/${item.idAtencion}`,payload)
+      if(mode==='create'){if(initialDose&&!vaccination.some(row=>String(row.idVacunaProgramada)===String(initialDose)&&row.tipo==='aplicada'))throw Error('Conserva la dosis seleccionada para registrar esta aplicación. Si ya fue aplicada, cierra y actualiza Vacunas.');if(role==='VETERINARIO'&&vaccination.length)payload.vacunas=vaccinationPayload(vaccination,pendingVaccines);await api.post('/atenciones',payload);if(vaccination.length)notifyVaccinesChanged(cita.idMascota);}else await api.put(`/atenciones/${item.idAtencion}`,payload)
       onDone()
     }catch(err){setFieldErrors(err.response?.data?.campos||{});setError(err.response?errorText(err):err.message)}finally{sending.current=false;setBusy(false)}
   }
@@ -72,7 +72,7 @@ export function AtencionForm({ mode, item, citas, mascotas, veterinarios = [], o
         <label className="block"><span className="text-sm font-semibold">Peso (kg)</span><input aria-invalid={!!fieldErrors.peso} aria-describedby={fieldErrors.peso?'clinical-peso-error':undefined} className={`input mt-2 ${fieldErrors.peso?'clinical-field-invalid':''}`} type="number" step="0.01" min="0.01" required disabled={busy} value={values.peso} onChange={change('peso')}/>{fieldErrors.peso&&<span className="clinical-field-error" id="clinical-peso-error">{fieldErrors.peso}</span>}</label>
         {role==='ADMIN'&&<label className="block"><span className="text-sm font-semibold">Precio (S/) · administrativo</span><input className="input mt-2" type="number" step="0.01" min="0.01" placeholder="Pendiente de asignación" disabled={busy} value={values.precioAtencion} onChange={change('precioAtencion')}/></label>}
         {[['sintoma','Síntomas'],['diagnostico','Diagnóstico'],['tratamiento','Tratamiento'],['observacion','Observaciones']].map(([key,label])=><label key={key} className="block sm:col-span-2"><span className="text-sm font-semibold">{label}</span><textarea aria-invalid={!!fieldErrors[key]} aria-describedby={fieldErrors[key]?`clinical-${key}-error`:undefined} className={`input min-h-20 mt-2 ${fieldErrors[key]?'clinical-field-invalid':''}`} rows={3} required={key!=='observacion'} maxLength={500} disabled={busy} value={values[key]} onChange={change(key)}/>{fieldErrors[key]&&<span className="clinical-field-error" id={`clinical-${key}-error`}>{fieldErrors[key]}</span>}</label>)}
-        {mode==='create'&&context&&role==='VETERINARIO'&&<ClinicalVaccination petId={cita.idMascota} vetId={cita.idVeterinario} rows={vaccination} onChange={setVaccination} onPending={setPendingVaccines} busy={busy}/>}
+        {mode==='create'&&context&&role==='VETERINARIO'&&<ClinicalVaccination petId={cita.idMascota} vetId={cita.idVeterinario} rows={vaccination} onChange={setVaccination} onPending={setPendingVaccines} initialDose={initialDose} busy={busy}/>}
         {mode==='create'&&!context&&!error&&<p className="sm:col-span-2 text-sm" role="status">Verificando horario y expediente de la cita…</p>}
         {error&&<p role="alert" className="sm:col-span-2 bg-red-50 p-3 rounded-xl text-red-800 text-sm flex gap-2"><AlertCircle size={18}/>{error}</p>}
         <div className="sm:col-span-2 flex justify-end gap-3"><button type="button" disabled={busy} className="btn btn-ghost" onClick={onClose}>Cancelar</button><button disabled={busy||(mode==='create'&&!context)} className="btn btn-primary"><Save size={17}/>{busy?'Guardando...':mode==='create'?'Guardar atención':'Guardar cambios'}</button></div>

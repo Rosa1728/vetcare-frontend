@@ -1,0 +1,60 @@
+.mascotas-page .vetcare-section-header{gap:16px;flex-wrap:wrap}
+.mascotas-page .vetcare-section-header>div:last-child,.mascotas-actions{display:flex;gap:8px;flex-wrap:wrap}
+.mascotas-page button:disabled,.mascotas-delete-modal button:disabled{opacity:.55;cursor:default}
+.mascotas-page .mascotas-delete,.mascotas-delete-modal .mascotas-delete{background:#FEF2F2;border:1px solid #F3C8CC;color:#A42534}
+.mascotas-page .mascotas-delete:hover,.mascotas-delete-modal .mascotas-delete:hover{background:#FCE4E6}
+.mascotas-message{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid;border-radius:12px;margin-bottom:16px;font-size:14px;overflow-wrap:anywhere}
+.mascotas-message>span{flex:1;min-width:0}.mascotas-message>svg{flex:none}.mascotas-message>button{display:grid;place-items:center;flex:none;padding:3px;border-radius:4px}
+.mascotas-error{background:#FEF2F2;border-color:#F3C8CC;color:#9F2432}.mascotas-warning{background:#FFFBEB;border-color:#FDE68A;color:#854D0E}.mascotas-success{background:#ECFDF5;border-color:#A7F3D0;color:#065F46}
+/* EditorForm compact se renderiza en un portal: usar la clase exclusiva de Mascotas. */
+.mascotas-editor.vets-editor{display:flex;flex-direction:column;width:100%;max-width:540px;padding:20px!important;max-height:calc(100dvh - 32px);overflow:hidden!important}
+.mascotas-editor.vets-editor>div:first-child{margin-bottom:14px}
+.mascotas-editor h2{font-size:21px;color:#3B2382}
+.mascotas-editor form{display:flex;flex-direction:column;min-height:0;gap:0}
+.mascotas-editor .vets-editor-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;border:0;padding:2px 4px 12px;overflow-y:auto;min-height:0}
+.mascotas-editor .vets-editor-body label>span{font-size:13px;margin-bottom:5px}
+.mascotas-editor :is(.input,.vet-select-trigger){height:42px;min-height:42px;padding:9px 12px;font-size:14px;border-radius:9px}
+.mascotas-editor .vets-editor-actions{border-top:1px solid #E5E7EB;margin-top:4px;padding-top:12px!important}
+.mascotas-editor .btn{min-height:40px;padding:8px 12px;font-size:13px}
+.mascotas-breed{display:grid;gap:8px}
+.mascotas-page button:focus-visible,.mascotas-message button:focus-visible{outline:2px solid #3B2382;outline-offset:3px}
+@media(max-width:600px){
+ .mascotas-editor.vets-editor{padding:16px!important}
+ .mascotas-editor .vets-editor-body{grid-template-columns:1fr}
+ .mascotas-editor .vets-editor-body>.sm\:col-span-2{grid-column:auto}
+ .mascotas-actions{min-width:130px}.mascotas-page td,.mascotas-page th{padding:12px}
+}
+
+/* Jerarquía de acciones limitada al módulo y a sus variantes fotográficas. */
+.mascotas-page :is(.mascotas-edit,.mascotas-photo),.mascotas-editor .mascotas-secondary,.mascotas-photo-dialog .mascotas-secondary{background:#F3EEFF;border:1px solid #DDD0F7;color:#3B2382}
+.mascotas-page :is(.mascotas-edit,.mascotas-photo):hover,.mascotas-editor .mascotas-secondary:hover,.mascotas-photo-dialog .mascotas-secondary:hover{background:#E9DFFB;border-color:#C5B0EB}
+.mascotas-page .btn-primary,.mascotas-editor .btn-primary,.mascotas-photo-dialog .btn-primary,.mascotas-crop-dialog .btn-primary{background:#3B2382;color:#FFFFFF;border:1px solid #3B2382}
+.mascotas-page .btn-primary:hover,.mascotas-editor .btn-primary:hover,.mascotas-photo-dialog .btn-primary:hover,.mascotas-crop-dialog .btn-primary:hover{background:#51359B}
+.mascotas-editor .vets-editor-actions .btn-ghost,.mascotas-photo-dialog .btn-ghost:not(.mascotas-secondary):not(.mascotas-photo-delete),.mascotas-crop-dialog .btn-ghost{background:#FFFFFF;border:1px solid #DDD0F7;color:#3B2382}
+.mascotas-editor .vets-editor-actions .btn-ghost:hover,.mascotas-photo-dialog .btn-ghost:not(.mascotas-secondary):not(.mascotas-photo-delete):hover,.mascotas-crop-dialog .btn-ghost:hover{background:#F3EEFF}
+.mascotas-photo-dialog .mascotas-photo-delete{background:#FEF2F2;border:1px solid #F3C8CC;color:#A42534}
+.mascotas-photo-dialog .mascotas-photo-delete:hover{background:#FCE4E6}
+.mascotas-editor .btn:disabled,.mascotas-photo-dialog .btn:disabled,.mascotas-crop-dialog .btn:disabled{opacity:.5;cursor:default}
+.mascotas-editor .btn,.mascotas-photo-dialog .btn,.mascotas-crop-dialog .btn{min-height:44px}
+.mascotas-editor :is(button,input):focus-visible,.mascotas-photo-dialog :is(button,input):focus-visible,.mascotas-crop-dialog :is(button,input,canvas):focus-visible{outline:2px solid #3B2382;outline-offset:3px}
+.mascotas-editor .vet-select-trigger{color:#1F2937;border-color:#DDD0F7}
+.mascotas-editor .vet-select-trigger>svg{color:#3B2382}
+.mascotas-editor .vet-select-trigger:focus-visible{outline-color:#3B2382}
+.mascotas-photo-section{border:1px solid #DDD0F7;border-radius:12px;padding:14px;background:#FCFAFF}
+.mascotas-photo-section h3{font-size:14px;font-weight:650;color:#3B2382;margin-bottom:10px}
+.mascotas-photo-section p,.mascotas-photo-dialog .mascotas-photo-description{font-size:12px;line-height:1.6;color:#6B7280;margin-top:8px}
+.mascotas-remove-pending{color:#3B2382;text-decoration:underline;font-size:13px;min-height:44px;margin-top:4px}
+.mascotas-file-control{position:relative;overflow:hidden;cursor:pointer}
+.mascotas-file-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.mascotas-file-control:focus-within{outline:2px solid #3B2382;outline-offset:3px}
+.mascotas-file-control:has(input:disabled){opacity:.5;cursor:default;pointer-events:none}
+.mascotas-photo-dialog{max-height:calc(100dvh - 32px);overflow-y:auto}
+.mascotas-photo-dialog>div:last-of-type{flex-wrap:wrap}
+.mascotas-crop-dialog canvas{border-color:#DDD0F7}
+.mascotas-crop-dialog input[type=range],.mascotas-editor input[type=date]{accent-color:#3B2382;color-scheme:light}
+.mascotas-editor input[type=date]{border-color:#DDD0F7;color:#1F2937}
+.mascotas-editor.vets-editor .btn{min-height:44px}
+.mascotas-editor.vets-editor :is(.input,.vet-select-trigger){height:44px;min-height:44px}
+
+.mascotas-editor .editor-scroll-body{min-height:0;overflow-y:auto;overscroll-behavior:contain;flex:1}
+.mascotas-editor .editor-scroll-body .vets-editor-body{overflow:visible;min-width:0;margin:0}

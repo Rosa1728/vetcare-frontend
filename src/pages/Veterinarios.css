@@ -13,3 +13,31 @@
 .vets-refined-dialog .profile-dialog-actions .modal-danger{background:#F9E4E4;border:1px solid #EDBBBB;color:#963F3F}.vets-refined-dialog .profile-dialog-actions .modal-danger:hover{background:#F4D4D4}.vets-refined-dialog .profile-dialog-actions .profile-primary{background:#3B2382;color:white;border:1px solid #3B2382;border-radius:9px;padding:10px 16px;font-weight:600}.vets-refined-dialog .profile-primary:hover{background:#5232B1}
 .vets-refined-editor .vets-editor-body{gap:12px 18px}.vets-refined-editor label:nth-child(5),.vets-refined-editor label:nth-child(7){border-top:1px solid #F0EDF5;padding-top:10px}.vets-refined-editor label:nth-child(6),.vets-refined-editor label:nth-child(8){border-top:1px solid #F0EDF5;padding-top:10px}.vets-refined-editor .vets-editor-body [role=alert]{display:flex;gap:7px;background:#FEF2F2;color:#994545;border:1px solid #F5D4D4;border-radius:8px;font-size:12px;line-height:1.5;padding:9px;margin-top:6px}.vets-refined-editor .vets-field-error svg{flex:none;margin-top:2px}.vets-refined-editor .vets-field-error ul{list-style:disc;padding-left:15px}.vets-refined-editor .input[aria-invalid=true]{border-color:#DFAAAA}.vets-refined-editor .vets-field-help{display:block;color:#6B7280;font-size:12px;line-height:1.45;margin-top:6px}.vets-refined-editor label>small{font-size:12px;line-height:1.5}.vets-refined-editor .vets-editor-actions .btn-primary{background:#3B2382;color:white}.vets-refined-editor .vets-editor-actions .btn-primary:hover{background:#5232B1}
 @media(max-width:600px){.vets-refined-dialog.profile-dialog{padding:20px}.vets-modal-heading h2{font-size:19px}.vets-refined-dialog .profile-dialog-actions button{min-height:42px}.vets-refined-editor label:nth-child(n){border-top:0;padding-top:0}}
+
+/* Variante optativa del editor ADMIN: no modifica otros módulos. */
+.vets-final-editor.vets-editor{max-width:680px;max-height:calc(100dvh - 32px)}
+.vets-final-editor .editor-scroll-body{min-height:0;overflow-y:auto;overscroll-behavior:contain;flex:1}
+.vets-final-editor .editor-scroll-body .vets-editor-body{overflow:visible;min-width:0;margin:0}
+.vets-final-editor.vets-editor :is(.input,.auth-control input,.vet-select-trigger){background:#FFFFFF;border:1px solid #CFC5E5;color:#1F2937;height:44px;min-height:44px;border-radius:9px;padding:9px 12px;font-size:14px}
+.vets-final-editor.vets-editor .auth-control input{padding-right:44px}
+.vets-final-editor.vets-editor :is(.input,.auth-control input,.vet-select-trigger):focus{border-color:#3B2382;outline:2px solid #F3EEFF;outline-offset:1px;box-shadow:0 0 0 1px #3B2382}
+.vets-final-editor .auth-control>button{color:#3B2382;min-width:40px;min-height:40px;padding:10px;right:2px;display:grid;place-items:center}
+.vets-final-editor .auth-control>button:focus-visible{outline:2px solid #3B2382;outline-offset:-3px}
+.vets-final-editor .vet-select-trigger>svg{color:#3B2382;margin-left:8px}
+.vets-final-editor.vets-editor :is(input,.vet-select-trigger)[aria-invalid=true]{border-color:#B42332}
+.vets-final-editor.vets-editor .btn{min-height:44px}
+.vets-page .btn-primary,.vets-final-editor .vets-editor-actions .btn-primary{background:#3B2382;border:1px solid #3B2382;color:#FFFFFF}
+.vets-page .btn-primary:hover,.vets-final-editor .vets-editor-actions .btn-primary:hover{background:#51359B}
+.vets-page .vets-edit{background:#F3EEFF;border-color:#DDD0F7;color:#3B2382}
+.vets-page .vets-edit:hover{background:#F3EEFF;border-color:#CFC5E5}
+.vets-final-editor .vets-editor-actions .btn-ghost{background:#FFFFFF;border:1px solid #DDD0F7;color:#3B2382}
+.vets-final-editor .vets-editor-actions .btn-ghost:hover{background:#F3EEFF}
+.vets-final-editor button:disabled{opacity:.5;cursor:default}
+.vets-final-editor :is(button,input):focus-visible{outline-color:#3B2382}
+.vets-final-editor .auth-control{position:relative}
+.vets-final-editor .auth-control input{width:100%}
+.vets-final-editor .auth-control>button{position:absolute;top:50%;transform:translateY(-50%)}
+
+.vets-select-menu .vet-select-option{color:#3B2382}
+
+.vets-contact-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.vets-contact-detail dt{color:#6B7280;font-size:12px}.vets-contact-detail dd{color:#1F2937;font-size:14px;overflow-wrap:anywhere;white-space:pre-wrap}.vets-contact-detail h2{color:#3B2382;font-size:21px}@media(max-width:480px){.vets-contact-detail dl{grid-template-columns:1fr}}

@@ -1,5 +1,5 @@
 import { appointmentDay, appointmentTime } from './vetAgenda.js'
-import { fullName } from './display.js'
+import { professionalName } from './display.js'
 
 const sameId = (a, b) => a != null && b != null && String(a) === String(b)
 const list = data => {
@@ -30,7 +30,7 @@ export function attentionRows(data) {
     const cita = citas.get(String(attention.idCita))
     const pet = cita ? pets.get(String(cita.idMascota)) : undefined
     const vet = vets.get(String(attention.idVeterinario))
-    return { attention, cita, pet, vet, vetName: fullName(vet) || 'Veterinario no disponible' }
+    return { attention, cita, pet, vet, vetName: professionalName(vet) || 'Veterinario no disponible' }
   })
 }
 

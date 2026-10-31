@@ -1,10 +1,18 @@
-export const passwordHelp='Usa 8 o más caracteres, con mayúscula, minúscula, número y símbolo. Evita contraseñas comunes. Máximo 72 bytes.'
-export function passwordError(value){
- if(typeof value!=='string'||[...value].length<8||new TextEncoder().encode(value).length>72||!/[\p{Lu}]/u.test(value)||!/[\p{Ll}]/u.test(value)||!/[\p{Nd}]/u.test(value)||!(/[^\p{L}\p{N}\s]/u).test(value))return passwordHelp
- const base=value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z]/g,'')
- if(['password','contrasena','qwerty','admin','administrator','letmein','welcome','bienvenido','vetcare','abc'].includes(base))return 'Elige una contraseña menos común. '+passwordHelp
- return ''
+export const passwordHelp='Usa al menos 8 caracteres, incluyendo mayúscula, minúscula, número y símbolo. Evita contraseñas comunes o fáciles de adivinar.'
+export function passwordIssues(value=''){
+ const text=typeof value==='string'?value:''
+ const issues=[]
+ if([...text].length<8)issues.push('Usa al menos 8 caracteres.')
+ if(new TextEncoder().encode(text).length>72)issues.push('La contraseña es demasiado larga. Usa una más breve.')
+ if(!/\p{Lu}/u.test(text))issues.push('Incluye una letra mayúscula.')
+ if(!/\p{Ll}/u.test(text))issues.push('Incluye una letra minúscula.')
+ if(!/\p{Nd}/u.test(text))issues.push('Agrega al menos un número.')
+ if(!/[^\p{L}\p{N}\s]/u.test(text))issues.push('Agrega al menos un símbolo.')
+ const base=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z]/g,'')
+ if(['password','contrasena','qwerty','admin','administrator','letmein','welcome','bienvenido','vetcare','abc'].includes(base))issues.push('Elige una contraseña menos común o difícil de adivinar.')
+ return issues
 }
+export function passwordError(value){return passwordIssues(value).join(' ')}
 export function registrationError(v,confirmation){
  if(['nombres','apellidos','nroDocumento','correo'].some(k=>!v[k]?.trim()))return 'Completa los datos obligatorios.'
  if(!['DNI','CE','PASAPORTE'].includes(v.tipoDocumento))return 'Selecciona un tipo de documento válido.'

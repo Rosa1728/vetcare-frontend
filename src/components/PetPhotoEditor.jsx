@@ -6,7 +6,8 @@ import PetPhotoCrop from './PetPhotoCrop'
 import { api, errorText } from '../lib/api'
 import { getPetPhotoChange, notifyPetPhoto } from '../lib/petPhoto'
 
-export default function PetPhotoEditor({ pet, initialPhoto = null, initialError = '', onClose, onSaved }) {
+export default function PetPhotoEditor({ pet, initialPhoto = null, initialError = '', onClose, onSaved, variant='', returnFocusRef }) {
+  const refined=variant==='mascotas'
   const [raw, setRaw] = useState(null)
   const [pending, setPending] = useState(initialPhoto)
   const [preview, setPreview] = useState('')
@@ -25,19 +26,19 @@ export default function PetPhotoEditor({ pet, initialPhoto = null, initialError 
     return () => { reader.onload = null; if (reader.readyState === FileReader.LOADING) reader.abort() }
   }, [pending])
   useEffect(() => {
-    const old = document.body.style.overflow, previous = document.activeElement
+    const old = document.body.style.overflow, previous = returnFocusRef?.current || document.activeElement
     document.body.style.overflow = 'hidden'; panel.current.querySelector('button')?.focus()
     const key = e => {
       if (e.key === 'Escape' && !sending.current && !panel.current.ownerDocument.querySelector('[aria-labelledby="pet-crop-title"]')) onClose()
       if (e.key === 'Tab' && panel.current.contains(document.activeElement)) {
-        const controls = [...panel.current.querySelectorAll('button:not(:disabled),input:not(:disabled)')]
+        const controls = [...panel.current.querySelectorAll('button:not(:disabled),input:not(:disabled)')].filter(node=>node.offsetParent!==null&&node.tabIndex!==-1)
         if (e.shiftKey && document.activeElement === controls[0]) { e.preventDefault(); controls.at(-1)?.focus() }
         else if (!e.shiftKey && document.activeElement === controls.at(-1)) { e.preventDefault(); controls[0]?.focus() }
       }
     }
     document.addEventListener('keydown', key)
-    return () => { document.body.style.overflow = old; document.removeEventListener('keydown', key); if (previous?.isConnected) previous.focus() }
-  }, [onClose])
+    return () => { document.body.style.overflow = old; document.removeEventListener('keydown', key); if(refined)requestAnimationFrame(()=>{if(previous?.isConnected)previous.focus()});else if (previous?.isConnected) previous.focus() }
+  }, [onClose,refined,returnFocusRef])
   async function save() {
     if (!pending || sending.current) return
     sending.current = true; setBusy(true); setError(''); setMessage('')
@@ -53,5 +54,5 @@ export default function PetPhotoEditor({ pet, initialPhoto = null, initialError 
     catch (err) { setError(errorText(err)) }
     finally { sending.current = false; setBusy(false) }
   }
-  return createPortal(<div className="fixed inset-0 z-[100] bg-[#211431]/55 flex items-center justify-center p-4"><section ref={panel} role="dialog" aria-modal="true" aria-labelledby="pet-photo-title" className="bg-white rounded-3xl w-full max-w-md p-6 text-[#3B2382]"><header className="flex justify-between items-center gap-3"><h2 id="pet-photo-title" className="text-xl font-bold">Fotografía de la mascota</h2><button disabled={busy} type="button" onClick={onClose} aria-label="Cerrar fotografía" className="p-2"><X size={20}/></button></header><p className="text-sm text-gray-500 mt-2">{pet.nombre} · JPG, PNG o WebP, hasta 5 MB.</p><div className="my-6 flex justify-center">{pending && preview ? <img src={preview} alt="Recorte pendiente de guardar" className="w-28 h-28 object-cover rounded-full border border-violet-100"/> : <PetAvatar pet={{ ...pet, tieneFoto: hasPhoto }} size={112}/>}</div><label className="btn btn-ghost w-full cursor-pointer"><Camera size={17}/>{hasPhoto ? 'Cambiar fotografía' : 'Subir fotografía'}<input className="hidden" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) { setError(''); setRaw(file) } }}/></label>{hasPhoto && <button disabled={busy} type="button" className="btn btn-ghost w-full mt-2" onClick={remove}><Trash2 size={16}/>Eliminar fotografía</button>}{error && <p role="alert" className="text-sm text-red-700 mt-3">{error}</p>}{message && <p role="status" className="text-sm text-emerald-700 mt-3">{message}</p>}{pending && <p className="text-xs text-gray-500 mt-3">El recorte todavía no se ha guardado. Cancelar conservará la fotografía anterior.</p>}<div className="flex justify-end gap-3 mt-5"><button disabled={busy} type="button" className="btn btn-ghost" onClick={onClose}>{pending ? 'Cancelar' : 'Cerrar'}</button><button disabled={!pending || busy} type="button" className="btn btn-primary" onClick={save}>{busy ? 'Guardando…' : 'Guardar fotografía'}</button></div>{raw && <PetPhotoCrop key={raw.name + raw.lastModified} file={raw} onCancel={cancelCrop} onConfirm={file => { setPending(file); setRaw(null) }}/>}</section></div>, document.body)
+  return createPortal(<div className="fixed inset-0 z-[100] bg-[#211431]/55 flex items-center justify-center p-4"><section ref={panel} role="dialog" aria-modal="true" aria-labelledby="pet-photo-title" className={`bg-white rounded-3xl w-full max-w-md p-6 text-[#3B2382] ${refined?'mascotas-photo-dialog':''}`}><header className="flex justify-between items-center gap-3"><h2 id="pet-photo-title" className="text-xl font-bold">Fotografía de la mascota</h2><button disabled={busy} type="button" onClick={onClose} aria-label="Cerrar fotografía" className="p-2"><X size={20}/></button></header><p className="text-sm text-gray-500 mt-2">{refined ? (hasPhoto ? `Foto actual de ${pet.nombre}` : 'Esta mascota todavía no tiene fotografía.') : `${pet.nombre} · JPG, PNG o WebP, hasta 5 MB.`}</p>{refined&&<p className="mascotas-photo-description">Puedes cambiar la fotografía por una imagen JPG, PNG o WebP de hasta 5 MB.</p>}<div className="my-6 flex justify-center">{pending && preview ? <img src={preview} alt="Recorte pendiente de guardar" className="w-28 h-28 object-cover rounded-full border border-violet-100"/> : <PetAvatar pet={{ ...pet, tieneFoto: hasPhoto }} size={112}/>}</div><label className={`btn btn-ghost w-full cursor-pointer ${refined?'mascotas-secondary mascotas-file-control':''}`}><Camera size={17}/>{hasPhoto ? 'Cambiar fotografía' : (refined?'Agregar fotografía':'Subir fotografía')}<input className={refined?'mascotas-file-input':'hidden'} aria-label={hasPhoto?'Cambiar fotografía':'Agregar fotografía'} type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) { setError(''); setRaw(file) } }}/></label>{hasPhoto && <button disabled={busy} type="button" className={`btn btn-ghost w-full mt-2 ${refined?'mascotas-photo-delete':''}`} onClick={remove}><Trash2 size={16}/>Eliminar fotografía</button>}{error && <p role="alert" className="text-sm text-red-700 mt-3">{error}</p>}{message && <p role="status" className="text-sm text-emerald-700 mt-3">{message}</p>}{pending && <p className="text-xs text-gray-500 mt-3">El recorte todavía no se ha guardado. Cancelar conservará la fotografía anterior.</p>}<div className="flex justify-end gap-3 mt-5"><button disabled={busy} type="button" className="btn btn-ghost" onClick={onClose}>{pending ? 'Cancelar' : 'Cerrar'}</button><button disabled={!pending || busy} type="button" className="btn btn-primary" onClick={save}>{busy ? 'Guardando…' : 'Guardar fotografía'}</button></div>{raw && <PetPhotoCrop variant={variant} key={raw.name + raw.lastModified} file={raw} onCancel={cancelCrop} onConfirm={file => { setPending(file); setRaw(null) }}/>}</section></div>, document.body)
 }

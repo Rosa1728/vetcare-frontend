@@ -1,5 +1,5 @@
 import {appointmentTime} from './vetAgenda.js'
-import {fullName} from './display.js'
+export {professionalName} from './display.js'
 export const FUTURE_ATTENTION_HELP='Podrás registrar la atención durante el horario autorizado de la cita.'
 export const cancellationReasons=['Inconveniente con el horario.','Motivos personales.','Ya no necesito la consulta.','Otro motivo.']
 export function attentionWindow(cita,now=Date.now()) {
@@ -16,11 +16,6 @@ export function clinicalPayload(values,cita,history,role){
  return payload
 }
 
-export function professionalName(vet) {
- const name=fullName(vet)
- if(!name)return ''
- return [['Dr.','Dra.'].includes(vet?.tratamientoProfesional)?vet.tratamientoProfesional:'',name].filter(Boolean).join(' ')
-}
 export function validateClinicalValues(values) {
  const errors={}
  if(!Number.isFinite(Number(values.peso))||Number(values.peso)<=0)errors.peso='Indica un peso mayor a 0.'

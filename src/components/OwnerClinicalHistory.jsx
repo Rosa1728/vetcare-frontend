@@ -6,7 +6,7 @@ import AntecedentsEditor from './AntecedentsEditor'
 import { Activity, BookHeart, CalendarDays, ChevronDown, ChevronUp, ChevronRight, ClipboardPlus, ShieldCheck, Syringe, FileText, Heart, Scissors, UserRound, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { api } from '../lib/api'
-import { dateDisplay, fullName, listOf } from '../lib/display'
+import { dateDisplay, professionalName,fullName, listOf } from '../lib/display'
 import { loadClinicalHistory } from '../lib/clinicalHistory'
 import { attentionDate, attentionError, loadAttentionDetail } from '../lib/attentions'
 import { doseCountdown, hasClinicalText, historyAttentionRow, nextHistoryTab, openingHistoryLabel, ownerClinicalModel, ownerHistoryTabs, vaccineDateLabel, vaccineSupplement } from '../lib/ownerHistory'
@@ -99,7 +99,7 @@ function PetRecord({ id, profile, clinical }) {
   if (current.error) return <div className="owner-history-message" role="alert"><p>{attentionError(current.error)}</p><button onClick={retry}>Volver a intentar</button></div>
   const record = current.record, { pet, history, sections } = record
   const model = ownerClinicalModel(record), a = model.antecedentes || {}
-  const vetName = idVet => fullName(sections.veterinarios.data?.find(v => String(v.idVeterinario) === String(idVet))) || 'Veterinario no disponible'
+  const vetName = idVet => professionalName(sections.veterinarios.data?.find(v => String(v.idVeterinario) === String(idVet))) || 'Veterinario no disponible'
   async function openAttention(visit) {
     detailAbort.current?.abort()
     const controller = new AbortController()

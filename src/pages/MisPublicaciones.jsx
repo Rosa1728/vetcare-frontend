@@ -1,30 +1,41 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ImagePlus, Trash2 } from 'lucide-react'
-import { api, errorText } from '../lib/api'
-import { useAuth } from '../contexts/AuthContext'
+import {useCallback,useEffect,useRef,useState} from 'react'
+import {Link} from 'react-router-dom'
+import {Camera,Trash2,X} from 'lucide-react'
+import {api} from '../lib/api'
+import {useAuth} from '../contexts/AuthContext'
+import PrettySelect from '../components/PrettySelect'
+import PetPhotoCrop from '../components/PetPhotoCrop'
+import VetcareModal from '../components/VetcareModal'
+import StoryCard from '../components/StoryCard'
+import CitaToast from '../components/CitaToast'
+import {useCitaToast} from '../lib/useCitaToast'
+import {publishStory,storyCategories,storyError,storyErrors,uploadStoryPhoto} from '../lib/stories'
 import './UnifiedHeadings.css'
-
-const tipos=['Adopción','Recuperación','Celebración','Aventuras','Otros']
+const empty=()=>({idMascota:'',titulo:'',categoria:'Celebración',contenido:''})
 export default function MisPublicaciones(){
- const {user,owner}=useAuth(),[mascotas,setMascotas]=useState([]),[historias,setHistorias]=useState([])
- const [form,setForm]=useState({idMascota:'',titulo:'',categoria:'Celebración',contenido:''}),[foto,setFoto]=useState(null),[mensaje,setMensaje]=useState(''),[busy,setBusy]=useState(false)
- const refrescar=async()=>{const r=await api.get('/publicaciones/mis');setHistorias(r.data)}
- useEffect(()=>{if(user?.role!=='PROPIETARIO')return;api.get('/mascotas').then(r=>setMascotas((Array.isArray(r.data)?r.data:[]).filter(m=>String(m.idPropietario??m.propietario?.idPropietario)===String(owner?.idPropietario)))).catch(()=>{});refrescar().catch(()=>{})},[user?.role,owner?.idPropietario])
- async function publicar(e){e.preventDefault();setMensaje('');setBusy(true)
- try{const r=await api.post('/publicaciones',{...form,idMascota:Number(form.idMascota)});if(foto){const body=new FormData();body.append('foto',foto);await api.post(`/publicaciones/${r.data.id}/foto`,body,{timeout:30000})}
- setForm({idMascota:'',titulo:'',categoria:'Celebración',contenido:''});setFoto(null);await refrescar();setMensaje('Historia publicada.')}
- catch(err){setMensaje(errorText(err))}finally{setBusy(false)}}
- async function eliminar(id){if(!window.confirm('¿Eliminar esta historia?'))return;try{await api.delete(`/publicaciones/${id}`);await refrescar()}catch(e){setMensaje(errorText(e))}}
+ const {user,owner}=useAuth(),[mascotas,setMascotas]=useState([]),[historias,setHistorias]=useState([]),[form,setForm]=useState(empty)
+ const [photo,setPhoto]=useState(null),[crop,setCrop]=useState(null),[error,setError]=useState(''),[errors,setErrors]=useState({}),[message,setMessage]=useCitaToast()
+ const [loading,setLoading]=useState(true),[loadError,setLoadError]=useState(''),[busy,setBusy]=useState(false),[remove,setRemove]=useState(null),[partial,setPartial]=useState(null)
+ const input=useRef(null),lock=useRef(false),loadVersion=useRef(0)
+ const invalidate=useCallback(()=>{loadVersion.current++},[])
+ const refresh=useCallback(async()=>{const version=++loadVersion.current;setLoading(true);setLoadError('');try{const [p,h]=await Promise.all([api.get('/mascotas'),api.get('/publicaciones/mis')]);if(!Array.isArray(p.data)||!Array.isArray(h.data))throw Error('Formato inválido');if(version!==loadVersion.current)return;setMascotas(p.data.filter(m=>String(m.idPropietario??m.propietario?.idPropietario)===String(owner?.idPropietario)));setHistorias(h.data)}catch{if(version===loadVersion.current)setLoadError('No se pudieron consultar tus mascotas e historias. Intenta nuevamente.')}finally{if(version===loadVersion.current)setLoading(false)}},[owner?.idPropietario])
+ useEffect(()=>{let active=true;if(user?.role==='PROPIETARIO'&&owner?.idPropietario)Promise.resolve().then(()=>{if(active)refresh()});return()=>{active=false;invalidate()}},[user?.role,owner?.idPropietario,refresh,invalidate])
+ useEffect(()=>()=>{if(photo)URL.revokeObjectURL(photo.url)},[photo])
+ const change=key=>event=>{const value=event.target?event.target.value:event;setForm(v=>({...v,[key]:value}));setErrors(v=>({...v,[key]:undefined}));setError('')}
+ function clear(){setForm(empty());setPhoto(null);setPartial(null);setErrors({});setError('')}
+ async function submit(event){event.preventDefault();if(lock.current)return;setError('');const invalid=storyErrors(form);setErrors(invalid);if(Object.keys(invalid).length)return;lock.current=true;setBusy(true)
+  try{if(partial){if(!photo)throw Error('Selecciona una fotografía o continúa sin ella.');await uploadStoryPhoto(api,partial.id,photo.file);clear();setMessage('Fotografía guardada.');await refresh();return}
+   const result=await publishStory(api,form,photo?.file)
+   if(result.photoError){setPartial(result.story);setError('La historia se publicó, pero la fotografía no se pudo guardar. Reintenta la fotografía; no se creará otra historia.')}else{clear();setMessage('Historia publicada.')}
+   await refresh()
+  }catch(e){setError(e.response?storyError(e):e.message)}finally{lock.current=false;setBusy(false)}
+ }
+ async function eliminate(){if(lock.current)return;lock.current=true;setBusy(true);setError('');try{await api.delete(`/publicaciones/${remove.id}`);if(partial?.id===remove.id)clear();setRemove(null);setMessage('Historia eliminada.');await refresh()}catch(e){setError(storyError(e))}finally{lock.current=false;setBusy(false)}}
+ function choose(event){const file=event.target.files?.[0];event.target.value='';if(!file)return;setError('');if(file.size>5_000_000||!['image/jpeg','image/png','image/webp'].includes(file.type)){setError('Elige una fotografía JPG, PNG o WebP de hasta 5 MB.');return}setCrop(file)}
  if(user?.role!=='PROPIETARIO')return <p>Solo los propietarios pueden publicar historias.</p>
- return <main className="space-y-6 text-[#321858]"><header className="vetcare-section-header"><div><h1>Mis historias</h1><p>Comparte momentos de tus mascotas con la comunidad.</p></div><Link to="/" className="rounded-xl border border-violet-200 px-4 py-2 text-violet-700">Ver comunidad pública</Link></header>
- <form onSubmit={publicar} className="max-w-3xl space-y-4 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm"><h2 className="text-xl font-bold">Nueva historia</h2>
- <label className="block">Mascota<select required value={form.idMascota} onChange={e=>setForm(v=>({...v,idMascota:e.target.value}))} className="mt-1 w-full rounded-xl border border-violet-200 p-3"><option value="">Selecciona tu mascota</option>{mascotas.map(m=><option key={m.idMascota} value={m.idMascota}>{m.nombre}</option>)}</select></label>
- <label className="block">Título<input required maxLength={120} value={form.titulo} onChange={e=>setForm(v=>({...v,titulo:e.target.value}))} className="mt-1 w-full rounded-xl border border-violet-200 p-3"/></label>
- <label className="block">Categoría<select value={form.categoria} onChange={e=>setForm(v=>({...v,categoria:e.target.value}))} className="mt-1 w-full rounded-xl border border-violet-200 p-3">{tipos.map(x=><option key={x}>{x}</option>)}</select></label>
- <label className="block">Tu historia<textarea required maxLength={3000} rows={5} value={form.contenido} onChange={e=>setForm(v=>({...v,contenido:e.target.value}))} className="mt-1 w-full rounded-xl border border-violet-200 p-3"/></label>
- <label className="block"><span className="flex items-center gap-2"><ImagePlus size={18}/> Fotografía opcional (JPG, PNG o WebP, máximo 5 MB)</span><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setFoto(e.target.files?.[0]||null)} className="mt-2 block w-full text-sm"/></label>
- <button disabled={busy} className="rounded-xl bg-[#5c23af] px-6 py-3 font-semibold text-white disabled:opacity-50">{busy?'Publicando...':'Publicar historia'}</button>{mensaje&&<p role="status" className="text-sm text-[#624a81]">{mensaje}</p>}</form>
- <section className="grid gap-4 md:grid-cols-2">{historias.map(h=><article key={h.id} className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm">{h.foto&&<img className="h-52 w-full object-cover" src={`${api.defaults.baseURL}/publicaciones/${h.id}/foto`} alt={`Mascota ${h.mascota}`}/>}<div className="space-y-2 p-5"><span className="text-xs font-bold text-emerald-700">{h.categoria}</span><h3 className="text-xl font-bold">{h.titulo}</h3><p className="text-sm text-violet-700">{h.mascota}</p><p className="whitespace-pre-wrap text-sm">{h.contenido}</p><button onClick={()=>eliminar(h.id)} className="flex items-center gap-1 text-sm text-red-700"><Trash2 size={16}/> Eliminar</button></div></article>)}</section>
- </main>
+ return <section className="my-stories"><header className="vetcare-section-header"><div><h1>Mis historias</h1><p>Comparte momentos de tus mascotas con la comunidad.</p></div><Link className="story-button" to="/comunidad">Ver Comunidad →</Link></header><CitaToast message={message} onClose={()=>setMessage('')}/><form className="story-form" noValidate onSubmit={submit}><h2>Nueva historia</h2><fieldset disabled={busy||!!partial||loading}><div className="story-form-grid"><label><span>Mascota</span><PrettySelect required keyboardNavigation floating invalid={!!errors.idMascota} label="Mascota de la historia" placeholder="Selecciona tu mascota" value={form.idMascota} onChange={change('idMascota')} options={mascotas.map(m=>({value:m.idMascota,label:m.nombre}))}/>{errors.idMascota&&<small role="alert">{errors.idMascota}</small>}</label><label><span>Categoría</span><PrettySelect required keyboardNavigation floating label="Categoría de la historia" value={form.categoria} onChange={change('categoria')} options={storyCategories.map(value=>({value,label:value}))}/></label><label className="story-field-wide"><span>Título</span><input name="titulo" required maxLength={120} value={form.titulo} onChange={change('titulo')} aria-invalid={!!errors.titulo}/>{errors.titulo&&<small role="alert">{errors.titulo}</small>}</label><label className="story-field-wide"><span>Tu historia</span><textarea name="contenido" required rows={4} maxLength={3000} value={form.contenido} onChange={change('contenido')} aria-invalid={!!errors.contenido}/>{errors.contenido&&<small role="alert">{errors.contenido}</small>}</label></div></fieldset><div className="story-photo-controls"><input ref={input} className="sr-only" aria-label="Seleccionar fotografía para la historia" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={choose}/><button type="button" className="story-button story-photo-button" disabled={busy} onClick={()=>input.current.click()}><Camera size={18}/>{photo?'Cambiar fotografía':'Agregar fotografía'}</button><small>Opcional · JPG, PNG o WebP · Hasta 5 MB</small>{photo&&<div className="story-photo-preview"><img src={photo.url} alt="Encuadre pendiente para publicar"/><button type="button" className="story-button" disabled={busy} onClick={()=>setCrop(photo.source)}>Ajustar encuadre</button><button type="button" className="story-button" disabled={busy} onClick={()=>setPhoto(null)}><X size={16}/>Quitar fotografía pendiente</button></div>}</div>{error&&!remove&&<p className="story-error" role="alert">{error}</p>}<div className="story-form-actions">{partial&&<button type="button" className="story-button" disabled={busy} onClick={()=>{clear();setMessage('La historia publicada se conserva sin fotografía.')}}>Continuar sin fotografía</button>}<button className="story-button story-primary" disabled={busy||loading||!mascotas.length}>{busy?'Guardando…':partial?'Reintentar fotografía':'Publicar historia'}</button></div></form>
+ <section><h2>Mis publicaciones ({historias.length})</h2>{loading&&<p role="status">Cargando tus publicaciones…</p>}{loadError&&<p role="alert">{loadError}<button className="story-button" disabled={loading} onClick={refresh}>Reintentar</button></p>}<div className="my-story-list">{historias.map(story=><StoryCard key={`${story.id}-${story.foto}`} story={story} compact={false} to={`/panel/mis-historias/${story.id}`} actions={<button className="story-button story-delete" disabled={busy} onClick={()=>{setError('');setRemove(story)}}><Trash2 size={16}/>Eliminar</button>}/>)}</div>{!loading&&!loadError&&!historias.length&&<p>Aún no has publicado historias.</p>}</section>
+ {crop&&<PetPhotoCrop variant="stories" file={crop} onCancel={()=>setCrop(null)} onConfirm={file=>{setPhoto({file,source:crop,url:URL.createObjectURL(file)});setCrop(null)}}/>}
+ {remove&&<VetcareModal label="Eliminar historia" busy={busy} onClose={()=>{if(!busy){setRemove(null);setError('')}}}><h2>¿Eliminar esta historia?</h2><p>Se eliminará tu publicación «{remove.titulo}». Esta acción no se puede deshacer.</p>{error&&<p role="alert">{error}</p>}<div className="profile-dialog-actions"><button className="story-button" disabled={busy} onClick={()=>setRemove(null)}>Cancelar</button><button className="story-button story-delete" disabled={busy} onClick={eliminate}>{busy?'Eliminando…':'Eliminar historia'}</button></div></VetcareModal>}
+ </section>
 }
